@@ -1,5 +1,5 @@
 ================ TIME SERVER STATUS ================
-Generated: 2026-03-22T19:40:01-04:00
+Generated: 2026-03-22T19:40:26-04:00
 
 [ SERVICES ]
 OK    chrony.service running
@@ -16,11 +16,11 @@ OK    NTP port 123 listening
 OK    PPS selected by chrony
 Reference ID : 50505300 (PPS)
 Stratum      : 1
-System time  : 0.000000045 seconds fast of NTP time
-Last offset  : +0.000000023 seconds
-RMS offset   : 0.000000502 seconds
-Frequency    : 6.404 ppm fast
-Skew         : 0.026 ppm
+System time  : 0.000000215 seconds fast of NTP time
+Last offset  : +0.000000147 seconds
+RMS offset   : 0.000000372 seconds
+Frequency    : 6.408 ppm fast
+Skew         : 0.019 ppm
 Leap status  : Normal
 
 [ PPS DEVICES ]
@@ -29,19 +29,19 @@ OK    PPS device(s): /dev/pps0 /dev/pps1
 [ TIMING QUALITY ]
 Latest logger line:
 2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
-aggregate.log age : 1s
-plot.log age      : 2096s
-piksi_monitor age : 3s
+aggregate.log age : 25s
+plot.log age      : 2120s
+piksi_monitor age : 2s
 
 [ DATABASE ]
 OK    timing.db (60M, updated 1s ago)
   Path         : /home/pi/timing/timing.db
-  Last updated : 2026-03-22 19:40:01
+  Last updated : 2026-03-22 19:40:25
   Integrity    : OK
   Tables       : piksi_events sqlite_sequence teensy_telemetry timing_10min timing_data 
   Row count [timing_10min] : 751
 
-OK    teensy_stats.db (43M, updated 92s ago)
+OK    teensy_stats.db (43M, updated 116s ago)
   Path         : /home/pi/teensy_appliance/teensy_stats.db
   Last updated : 2026-03-22 19:38:30
   Integrity    : OK
@@ -58,12 +58,14 @@ MAILTO=""
 */10 * * * * /home/pi/time-server/rebuild/update_snapshot.sh && cd /home/pi/time-server && git add STATE_SNAPSHOT.txt && git commit -m "Auto update snapshot" && git push
 
 [ GIT ]
+d0ff1ea Auto update snapshot
 7cda67d Improve state snapshot with timing quality summary
 963aef8 Add database integrity and row count checks to state dump
 7915264 Ignore local project state snapshot
 8afbdd7 Add rebuild and state dump scripts
-cc14a1a Add automatic database initialization to rebuild
+M  .gitignore
  M STATE_SNAPSHOT.txt
+?? PROJECT_STATE.txt
 ?? rebuild/update_snapshot.sh
 
 ====================================================
