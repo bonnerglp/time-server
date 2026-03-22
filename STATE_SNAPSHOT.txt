@@ -1,0 +1,79 @@
+==== SYSTEM OVERVIEW ====
+Raspberry Pi Time Server
+
+==== ACTIVE SERVICES ====
+  chrony.service                                              loaded active running chrony, an NTP client/server
+  piksi-monitor.service                                       loaded active running Piksi TCP monitor and reboot detector
+  teensy-collector.service                                    loaded active running Teensy UDP Telemetry Collector
+  teensy-dash2.service                                        loaded active running Teensy Timing Dashboard 2
+  teensy_logger.service                                       loaded active running Teensy Timing Telemetry Logger
+
+==== LISTENING PORTS ====
+udp   UNCONN 0      0                          0.0.0.0:123        0.0.0.0:*                                       
+tcp   LISTEN 0      128                        0.0.0.0:8082       0.0.0.0:*    users:(("python3",pid=445924,fd=3))
+
+==== CHRONY STATUS ====
+Reference ID    : 50505300 (PPS)
+Stratum         : 1
+Ref time (UTC)  : Sun Mar 22 23:05:19 2026
+System time     : 0.000000938 seconds slow of NTP time
+Last offset     : -0.000001846 seconds
+RMS offset      : 0.000138379 seconds
+Frequency       : 6.358 ppm fast
+Residual freq   : -0.076 ppm
+Skew            : 0.062 ppm
+Root delay      : 0.000000001 seconds
+Root dispersion : 0.000006305 seconds
+Update interval : 4.0 seconds
+Leap status     : Normal
+
+  .-- Source mode  '^' = server, '=' = peer, '#' = local clock.
+ / .- Source state '*' = current best, '+' = combined, '-' = not combined,
+| /             'x' = may be in error, '~' = too variable, '?' = unusable.
+||                                                 .- xxxx [ yyyy ] +/- zzzz
+||      Reachability register (octal) -.           |  xxxx = adjusted offset,
+||      Log2(Polling interval) --.      |          |  yyyy = measured offset,
+||                                \     |          |  zzzz = estimated error.
+||                                 |    |           \
+MS Name/IP address         Stratum Poll Reach LastRx Last sample               
+===============================================================================
+#* PPS                           0   2   377     3   -320ns[-2141ns] +/- 1189ns
+^- 2602:fcff:1:dead:cafe:fa>     3   6   377     6   +421us[ +419us] +/-   41ms
+^- ip74-208-14-149.pbiaas.c>     1   6   377     8  -4350us[-4352us] +/-   29ms
+^- 2a11:6c7:2200:49fc::123       2   6   377     6    -13ms[  -13ms] +/-  173ms
+^- 2001:559:2be:3::1001          2   6   377     6  -6638us[-6640us] +/-   15ms
+
+==== CRONTAB (pi) ====
+MAILTO=""
+
+*/10 * * * * /usr/bin/python3 /home/pi/timing/aggregate_10min.py >> /home/pi/timing/aggregate.log 2>&1
+15 3 * * * /usr/bin/python3 /home/pi/timing/prune_timing_db.py >> /home/pi/timing/prune.log 2>&1
+5 * * * * /usr/bin/python3 /home/pi/timing/plot_timing_report.py >> /home/pi/timing/plot.log 2>&1
+50 6 * * * /usr/local/bin/timing_daily_backup.sh >> /home/pi/timing/backup.log 2>&1
+0 7 * * * /home/pi/timing/send_timing_report.sh >> /home/pi/timing/report.log 2>&1
+
+==== PROJECT STRUCTURE ====
+/home/pi/time-server/snapshot
+/home/pi/time-server/snapshot/teensy_dash2
+/home/pi/time-server/snapshot/teensy_dash2/templates
+/home/pi/time-server/snapshot/teensy_dash2/static
+/home/pi/time-server/snapshot/timing
+/home/pi/time-server/snapshot/teensy_appliance
+/home/pi/time-server/snapshot/chrony
+/home/pi/time-server/snapshot/scripts
+/home/pi/time-server/snapshot/systemd
+
+==== GIT STATUS ====
+68f422b Fix: complete MIT license text
+80e8324 Add MIT license
+8ffbda5 Add README
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	PROJECT_STATE.txt
+	STATE_SNAPSHOT.txt
+	rebuild/
+
+nothing added to commit but untracked files present (use "git add" to track)
