@@ -1,0 +1,15 @@
+[Unit]
+Description=Teensy Timing Telemetry Logger
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/timing
+ExecStart=/usr/bin/python3 /home/pi/timing/teensy_logger.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+[Unit]
+Description=Teensy Timing Dashboard 2
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/teensy_dash2
+Environment=DASHBOARD_PORT=8082
+ExecStart=/usr/bin/python3 /home/pi/teensy_dash2/app.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

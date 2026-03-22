@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Teensy Timing Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>Teensy Timing Dashboard</h1>
+
+  <div class="grid" id="cards"></div>
+
+  <h2>Timing</h2>
+  <canvas id="timingChart" width="1200" height="280"></canvas>
+
+  <h2>Phase Error Trend</h2>
+  <canvas id="phaseTrendChart" width="1200" height="280"></canvas>
+
+  <h2>60-Second Jitter</h2>
+  <canvas id="jitter60Chart" width="1200" height="280"></canvas>
+
+  <h2>10-Minute Jitter</h2>
+  <canvas id="jitter600Chart" width="1200" height="280"></canvas>
+
+  <h2>GPS PPS Noise (Filtered Phase Error)</h2>
+  <canvas id="ppsNoiseChart" width="1200" height="280"></canvas>
+
+  <h2>Frequency Error (ppb)</h2>
+  <canvas id="freqChart" width="1200" height="280"></canvas>
+
+  <h2>Frames / Bytes</h2>
+  <canvas id="trafficChart" width="1200" height="280"></canvas>
+
+  <h2>GNSS / Front End</h2>
+  <canvas id="gnssChart" width="1200" height="280"></canvas>
+
+  <h2>Phase Histogram</h2>
+  <canvas id="histChart" width="1200" height="280"></canvas>
+
+  <h2>Allan Deviation Curve</h2>
+  <canvas id="allanChart" width="1200" height="320"></canvas>
+
+  <h2>Raw Latest</h2>
+  <pre id="raw"></pre>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

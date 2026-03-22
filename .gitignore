@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtualenvs
+.venv/
+snapshot/**/.venv/
+
+# Logs
+*.log
+*.out
+
+# Images / generated reports
+*.png
+
+# Archives / backups
+*.tar.gz
+*.bak.*
+*.bak
+
+# Databases and SQLite sidecars
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Optional: keep only code/config in snapshot
+snapshot/timing/reports/

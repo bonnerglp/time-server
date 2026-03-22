@@ -1,0 +1,13 @@
+[Unit]
+Description=Teensy UDP Telemetry Collector
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/teensy_appliance
+ExecStart=/usr/bin/python3 /home/pi/teensy_appliance/collector.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

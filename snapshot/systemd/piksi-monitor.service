@@ -1,0 +1,17 @@
+[Unit]
+Description=Piksi TCP monitor and reboot detector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/timing
+Environment=PIKSI_HOST=10.0.0.243
+Environment=PIKSI_PORT=55555
+ExecStart=/usr/bin/python3 /home/pi/timing/piksi_monitor.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
