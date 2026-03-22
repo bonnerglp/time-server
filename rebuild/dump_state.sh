@@ -1,50 +1,156 @@
 #!/usr/bin/env bash
 set -u
 
-echo "==== SYSTEM OVERVIEW ===="
-echo "Raspberry Pi Time Server"
+green()  { printf "OK    %s\n" "$1"; }
+red()    { printf "FAIL  %s\n" "$1"; }
+yellow() { printf "WARN  %s\n" "$1"; }
+
+fail=0
+
+echo "================ TIME SERVER STATUS ================"
 echo "Generated: $(date -Is)"
 echo
 
-echo "==== ACTIVE SERVICES ===="
-systemctl list-units --type=service --all | grep -E 'chrony|teensy|piksi' || echo "No matching services found"
+echo "[ SERVICES ]"
+for svc in chrony.service teensy-collector.service teensy-dash2.service teensy_logger.service piksi-monitor.service; do
+  if systemctl is-active --quiet "$svc"; then
+    green "$svc running"
+  else
+    red "$svc NOT running"
+    fail=1
+  fi
+done
 echo
 
-echo "==== LISTENING PORTS ===="
-ss -tulnp | grep -E '(:8082|:8081|:123\b|:2947\b)' || echo "No expected ports found"
+echo "[ PORTS ]"
+if ss -tuln | grep -q ":8082 "; then
+  green "Dashboard listening on 8082"
+else
+  red "Dashboard NOT listening on 8082"
+  fail=1
+fi
+
+if ss -tuln | grep -q ":123 "; then
+  green "NTP port 123 listening"
+else
+  yellow "NTP port 123 not shown as listening"
+fi
 echo
 
-echo "==== CHRONY STATUS ===="
-chronyc tracking || true
-echo
-chronyc sources -v || true
+echo "[ TIME SYNC ]"
+if chronyc sources 2>/dev/null | grep -q '^\#\* PPS'; then
+  green "PPS selected by chrony"
+else
+  yellow "PPS not currently selected by chrony"
+fi
+
+tracking_out="$(chronyc tracking 2>/dev/null || true)"
+if [ -n "$tracking_out" ]; then
+  stratum="$(printf '%s\n' "$tracking_out" | awk -F': ' '/Stratum/{print $2}')"
+  refid="$(printf '%s\n' "$tracking_out" | awk -F': ' '/Reference ID/{print $2}')"
+  systime="$(printf '%s\n' "$tracking_out" | awk -F': ' '/System time/{print $2}')"
+  lastoff="$(printf '%s\n' "$tracking_out" | awk -F': ' '/Last offset/{print $2}')"
+  rmsoff="$(printf '%s\n' "$tracking_out" | awk -F': ' '/RMS offset/{print $2}')"
+  freq="$(printf '%s\n' "$tracking_out" | awk -F': ' '/Frequency/{print $2}')"
+  skew="$(printf '%s\n' "$tracking_out" | awk -F': ' '/Skew/{print $2}')"
+  leap="$(printf '%s\n' "$tracking_out" | awk -F': ' '/Leap status/{print $2}')"
+
+  echo "Reference ID : ${refid:-unknown}"
+  echo "Stratum      : ${stratum:-unknown}"
+  echo "System time  : ${systime:-unknown}"
+  echo "Last offset  : ${lastoff:-unknown}"
+  echo "RMS offset   : ${rmsoff:-unknown}"
+  echo "Frequency    : ${freq:-unknown}"
+  echo "Skew         : ${skew:-unknown}"
+  echo "Leap status  : ${leap:-unknown}"
+else
+  red "Unable to read chronyc tracking"
+  fail=1
+fi
 echo
 
-echo "==== PPS DEVICES ===="
-ls -l /dev/pps* 2>/dev/null || echo "No /dev/pps devices found"
+echo "[ PPS DEVICES ]"
+pps_list="$(ls /dev/pps* 2>/dev/null || true)"
+if [ -n "$pps_list" ]; then
+  green "PPS device(s): $(echo "$pps_list" | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+else
+  red "No PPS devices found"
+  fail=1
+fi
 echo
 
-echo "==== CRONTAB (pi) ===="
-crontab -l 2>/dev/null || echo "No crontab for pi"
+echo "[ TIMING QUALITY ]"
+if [ -f /home/pi/timing/teensy_logger.out ]; then
+  last_phase_line="$(grep 'phase=' /home/pi/timing/teensy_logger.out 2>/dev/null | tail -n 1 || true)"
+  if [ -n "$last_phase_line" ]; then
+    echo "Latest logger line:"
+    echo "$last_phase_line"
+  else
+    yellow "No phase lines found in teensy_logger.out"
+  fi
+else
+  yellow "Missing /home/pi/timing/teensy_logger.out"
+fi
+
+if [ -f /home/pi/timing/aggregate.log ]; then
+  agg_age=$(( $(date +%s) - $(stat -c %Y /home/pi/timing/aggregate.log) ))
+  echo "aggregate.log age : ${agg_age}s"
+fi
+
+if [ -f /home/pi/timing/plot.log ]; then
+  plot_age=$(( $(date +%s) - $(stat -c %Y /home/pi/timing/plot.log) ))
+  echo "plot.log age      : ${plot_age}s"
+fi
+
+if [ -f /home/pi/timing/piksi_monitor.log ]; then
+  piksi_age=$(( $(date +%s) - $(stat -c %Y /home/pi/timing/piksi_monitor.log) ))
+  echo "piksi_monitor age : ${piksi_age}s"
+fi
 echo
 
-echo "==== PROJECT STRUCTURE ===="
-find ~/time-server/snapshot -maxdepth 2 -type d 2>/dev/null || echo "Snapshot directory not found"
-echo
+echo "[ DATABASE ]"
+check_sqlite_db() {
+  local db="$1"
+  [ -f "$db" ] || return 0
 
-echo "==== GIT STATUS ===="
-cd ~/time-server 2>/dev/null || exit 1
-git log --oneline -n 5 || true
-git status --short || true
-echo
+  local size mtime age integrity tables
+  size=$(du -h "$db" | cut -f1)
+  mtime=$(date -r "$db" "+%Y-%m-%d %H:%M:%S")
+  age=$(( $(date +%s) - $(stat -c %Y "$db") ))
 
-echo "==== RECENT TIMING FILES ===="
-find /home/pi/timing -maxdepth 1 -type f \
-  \( -name "*.log" -o -name "*.txt" -o -name "*.html" -o -name "*.png" \) \
-  -printf "%TY-%Tm-%Td %TH:%TM  %9s  %f\n" 2>/dev/null | sort || true
-echo
+  if [ "$age" -lt 300 ]; then
+    green "$(basename "$db") ($size, updated ${age}s ago)"
+  else
+    yellow "$(basename "$db") ($size, updated ${age}s ago)"
+  fi
+  echo "  Path         : $db"
+  echo "  Last updated : $mtime"
 
-echo "==== DATABASE STATUS ===="
+  if command -v sqlite3 >/dev/null 2>&1; then
+    integrity=$(sqlite3 "$db" "PRAGMA integrity_check;" 2>/dev/null | head -n 1)
+    if [ "$integrity" = "ok" ]; then
+      echo "  Integrity    : OK"
+    elif [ -n "$integrity" ]; then
+      echo "  Integrity    : $integrity"
+      fail=1
+    else
+      echo "  Integrity    : unable to check"
+    fi
+
+    tables=$(sqlite3 "$db" "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;" 2>/dev/null | tr '\n' ' ')
+    echo "  Tables       : ${tables:-none}"
+
+    for tbl in timing_samples timing_10min telemetry pps_stats measurements phase_data; do
+      if sqlite3 "$db" "SELECT 1 FROM sqlite_master WHERE type='table' AND name='$tbl';" 2>/dev/null | grep -q 1; then
+        rows=$(sqlite3 "$db" "SELECT COUNT(*) FROM \"$tbl\";" 2>/dev/null)
+        echo "  Row count [$tbl] : $rows"
+      fi
+    done
+  else
+    echo "  sqlite3 not installed; skipping integrity and row counts"
+  fi
+  echo
+}
 
 for db in \
   /home/pi/timing/timing.db \
@@ -52,110 +158,23 @@ for db in \
   /mnt/*/*.db \
   /mnt/*/*/*.db
 do
-  if [ -f "$db" ]; then
-    size=$(du -h "$db" | cut -f1)
-    mtime=$(date -r "$db" "+%Y-%m-%d %H:%M:%S")
-    echo "[INFO] DB: $db"
-    echo "       Size: $size"
-    echo "       Last updated: $mtime"
-  fi
+  check_sqlite_db "$db"
 done
 
+echo "[ CRON ]"
+crontab -l 2>/dev/null || yellow "No crontab for pi"
 echo
-echo "==== SELF-DIAGNOSIS ===="
-fail=0
 
-check_service() {
-  local svc="$1"
-  if systemctl is-active --quiet "$svc"; then
-    echo "[OK]   Service running: $svc"
-  else
-    echo "[FAIL] Service not running: $svc"
-    fail=1
-  fi
-}
-
-check_port() {
-  local port="$1"
-  if ss -tuln | grep -q ":$port "; then
-    echo "[OK]   Port listening: $port"
-  else
-    echo "[FAIL] Port not listening: $port"
-    fail=1
-  fi
-}
-
-check_file() {
-  local path="$1"
-  if [ -e "$path" ]; then
-    echo "[OK]   File exists: $path"
-  else
-    echo "[FAIL] Missing file: $path"
-    fail=1
-  fi
-}
-
-check_recent_file() {
-  local path="$1"
-  local max_age_sec="$2"
-  if [ ! -e "$path" ]; then
-    echo "[WARN] File missing: $path"
-    return
-  fi
-  local now mtime age
-  now=$(date +%s)
-  mtime=$(stat -c %Y "$path" 2>/dev/null || echo 0)
-  age=$((now - mtime))
-  if [ "$age" -le "$max_age_sec" ]; then
-    echo "[OK]   Recently updated: $path (age ${age}s)"
-  else
-    echo "[WARN] Stale file: $path (age ${age}s)"
-  fi
-}
-
-check_service chrony.service
-check_service teensy-collector.service
-check_service teensy-dash2.service
-check_service teensy_logger.service
-check_service piksi-monitor.service
-
-check_port 8082
-
-if ls /dev/pps* >/dev/null 2>&1; then
-  echo "[OK]   PPS device present"
-else
-  echo "[FAIL] No PPS device present"
-  fail=1
-fi
-
-if chronyc sources 2>/dev/null | grep -q '^\#\* PPS'; then
-  echo "[OK]   Chrony currently locked to PPS"
-else
-  echo "[WARN] Chrony not currently showing PPS as selected source"
-fi
-
-check_file /etc/chrony/chrony.conf
-check_file /usr/local/bin/timing_daily_backup.sh
-check_file /home/pi/timing/send_timing_report.sh
-check_file /home/pi/timing/aggregate_10min.py
-check_file /home/pi/timing/plot_timing_report.py
-check_file /home/pi/timing/prune_timing_db.py
-check_file /home/pi/timing/teensy_logger.py
-check_file /home/pi/teensy_appliance/collector.py
-check_file /home/pi/teensy_dash2/app.py
-
-check_recent_file /home/pi/timing/aggregate.log 7200
-check_recent_file /home/pi/timing/plot.log 7200
-check_recent_file /home/pi/timing/report.log 93600
-check_recent_file /home/pi/timing/backup.log 93600
-check_recent_file /home/pi/timing/piksi_monitor.log 7200
-check_recent_file /home/pi/timing/teensy_logger.out 7200
-
+echo "[ GIT ]"
+cd ~/time-server 2>/dev/null || exit 1
+git log --oneline -n 5 || true
+git status --short || true
 echo
+
+echo "===================================================="
 if [ "$fail" -eq 0 ]; then
-  echo "==== OVERALL RESULT: PASS ===="
-  exit 0
+  green "OVERALL: PASS"
 else
-  echo "==== OVERALL RESULT: FAIL ===="
-  exit 1
+  red "OVERALL: FAIL"
 fi
+echo "===================================================="
