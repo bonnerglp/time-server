@@ -20,4 +20,4 @@ Raspberry Pi time server project with Chrony, PPS, Teensy telemetry collection, 
 - `snapshot/teensy_dash2/` = active dashboard source
 
 ## Notes
-This repository currently stores source/configuration snapshots, not runtime databases, logs, plots, or virtual environments.
+This repository stores source/configuration snapshots, not runtime databases, logs, plots, or virtual environments.
