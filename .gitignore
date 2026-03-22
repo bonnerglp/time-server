@@ -27,3 +27,4 @@ snapshot/**/.venv/
 
 # Optional: keep only code/config in snapshot
 snapshot/timing/reports/
+PROJECT_STATE.txt
