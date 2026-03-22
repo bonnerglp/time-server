@@ -1,0 +1,30 @@
+==== SYSTEM OVERVIEW ====
+Raspberry Pi Time Server
+- Chrony with PPS (ZED-F9T)
+- Teensy telemetry + dashboard
+- Cron-based reporting + backup
+
+==== ACTIVE SERVICES ====
+$(systemctl list-units --type=service | grep -E 'chrony|teensy|piksi')
+
+==== LISTENING PORTS ====
+$(ss -tulnp | grep -E '808|123')
+
+==== CHRONY STATUS ====
+$(chronyc tracking)
+$(chronyc sources -v)
+
+==== CRONTAB (pi) ====
+$(crontab -l)
+
+==== PROJECT STRUCTURE ====
+$(cd ~/time-server && find snapshot -maxdepth 2 -type d)
+
+==== GIT STATUS ====
+$(cd ~/time-server && git log --oneline -n 3)
+$(cd ~/time-server && git status)
+
+==== NOTES ====
+- Baseline committed
+- Dependencies captured
+- GitHub repo connected
