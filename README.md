@@ -1,6 +1,7 @@
 # time-server
 
 Raspberry Pi time server project with Chrony, PPS, Teensy telemetry collection, dashboard, logging, daily reporting, and backup automation.
+Hardware: Swift Piksi GPS, Sparkfun GNSS ZED-F9T, FE-5680a Rubidium, TEENSY, Raspberry Pi 5, TimeHAT, Cisco IE-2000-4TS-B
 
 ## Current baseline
 - Chrony with PPS selected as primary time reference
