@@ -1,3 +1,13 @@
+from pathlib import Path
+import sys
+
+REPO_ROOT = "/home/pi/time-server"
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+from pi.utils.version import get_version
+REPO_VERSION = get_version()
+
 # VERSION_HELPER_AVAILABLE
 import os
 import socket
@@ -155,9 +165,10 @@ def insert_sample(conn: sqlite3.Connection, sample: dict):
     timestamp_utc = datetime.now(timezone.utc).isoformat()
 
     row = {field: sample.get(field) for field in FIELDS}
+    row["repo_version"] = REPO_VERSION
     row["timestamp_utc"] = timestamp_utc
 
-    cols = ["timestamp_utc"] + FIELDS
+    cols = ["timestamp_utc"] + FIELDS + ["repo_version"]
     placeholders = ", ".join("?" for _ in cols)
     values = [row.get(c) for c in cols]
 
@@ -166,8 +177,8 @@ def insert_sample(conn: sqlite3.Connection, sample: dict):
         values,
     )
 
-    latest_cols = ["singleton_id", "timestamp_utc"] + FIELDS
-    latest_vals = [1, timestamp_utc] + [row.get(c) for c in FIELDS]
+    latest_cols = ["singleton_id", "timestamp_utc"] + FIELDS + ["repo_version"]
+    latest_vals = [1, timestamp_utc] + [row.get(c) for c in FIELDS] + [REPO_VERSION]
     latest_placeholders = ", ".join("?" for _ in latest_cols)
 
     conn.execute(

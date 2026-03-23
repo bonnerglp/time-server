@@ -1,3 +1,13 @@
+from pathlib import Path
+import sys
+
+REPO_ROOT = "/home/pi/time-server"
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+from pi.utils.version import get_version
+REPO_VERSION = get_version()
+
 # VERSION_HELPER_AVAILABLE
 #!/usr/bin/env python3
 import os
@@ -47,8 +57,8 @@ def add_event(event_type, detail=""):
     conn = db()
     try:
         conn.execute(
-            "INSERT INTO piksi_events (event_time, event_type, detail) VALUES (?, ?, ?)",
-            (utc_now(), event_type, detail)
+            "INSERT INTO piksi_events (event_time, event_type, detail, repo_version) VALUES (?, ?, ?, ?)",
+            (utc_now(), event_type, detail, REPO_VERSION)
         )
         conn.commit()
     finally:

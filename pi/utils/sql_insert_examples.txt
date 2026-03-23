@@ -1,0 +1,27 @@
+When inserting into a versioned table, include repo_version.
+
+Example:
+
+INSERT INTO timing_data (
+    ts,
+    phase_ns,
+    rms60_ns,
+    sats,
+    pdop,
+    repo_version
+) VALUES (?, ?, ?, ?, ?, ?)
+
+with parameters ending in:
+REPO_VERSION
+
+For aggregate tables:
+
+INSERT INTO timing_10min (
+    bucket_start,
+    mean_phase_ns,
+    rms_phase_ns,
+    min_phase_ns,
+    max_phase_ns,
+    sample_count,
+    repo_version
+) VALUES (?, ?, ?, ?, ?, ?, ?)

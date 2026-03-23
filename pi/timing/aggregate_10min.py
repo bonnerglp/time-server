@@ -1,3 +1,13 @@
+from pathlib import Path
+import sys
+
+REPO_ROOT = "/home/pi/time-server"
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+from pi.utils.version import get_version
+REPO_VERSION = get_version()
+
 #!/usr/bin/env python3
 import sqlite3
 from datetime import datetime, timedelta, UTC
