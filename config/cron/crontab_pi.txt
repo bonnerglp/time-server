@@ -1,0 +1,7 @@
+MAILTO=""
+
+*/10 * * * * /usr/bin/python3 /home/pi/timing/aggregate_10min.py >> /home/pi/timing/aggregate.log 2>&1
+15 3 * * * /usr/bin/python3 /home/pi/timing/prune_timing_db.py >> /home/pi/timing/prune.log 2>&1
+5 * * * * /usr/bin/python3 /home/pi/timing/plot_timing_report.py >> /home/pi/timing/plot.log 2>&1
+50 6 * * * /usr/local/bin/timing_daily_backup.sh >> /home/pi/timing/backup.log 2>&1
+0 7 * * * /home/pi/timing/send_timing_report.sh >> /home/pi/timing/report.log 2>&1

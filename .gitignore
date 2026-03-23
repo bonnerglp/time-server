@@ -27,3 +27,22 @@ snapshot/**/.venv/
 
 # Optional: keep only code/config in snapshot
 snapshot/timing/reports/
+
+# Keep empty tracked runtime dirs
+data/*
+!data/.gitkeep
+plots/*
+!plots/.gitkeep
+backups/*
+!backups/.gitkeep
+
+# Editor / OS junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Teensy / Arduino build artifacts
+*.elf
+*.hex
+*.bin
