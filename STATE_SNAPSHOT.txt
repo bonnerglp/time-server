@@ -1,5 +1,5 @@
 ================ TIME SERVER STATUS ================
-Generated: 2026-03-22T20:23:49-04:00
+Generated: 2026-03-22T20:33:31-04:00
 
 [ SERVICES ]
 OK    chrony.service running
@@ -16,11 +16,11 @@ OK    NTP port 123 listening
 OK    PPS selected by chrony
 Reference ID : 50505300 (PPS)
 Stratum      : 1
-System time  : 0.000000001 seconds fast of NTP time
-Last offset  : -0.000001332 seconds
-RMS offset   : 0.000000677 seconds
-Frequency    : 6.474 ppm fast
-Skew         : 0.078 ppm
+System time  : 0.000001084 seconds fast of NTP time
+Last offset  : +0.000001082 seconds
+RMS offset   : 0.000001471 seconds
+Frequency    : 6.226 ppm fast
+Skew         : 0.164 ppm
 Leap status  : Normal
 
 [ PPS DEVICES ]
@@ -29,21 +29,21 @@ OK    PPS device(s): /dev/pps0 /dev/pps1
 [ TIMING QUALITY ]
 Latest logger line:
 2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
-aggregate.log age : 228s
-plot.log age      : 1123s
-piksi_monitor age : 1s
+aggregate.log age : 211s
+plot.log age      : 1706s
+piksi_monitor age : 3s
 
 [ DATABASE ]
 OK    timing.db (60M, updated 2s ago)
   Path         : /home/pi/timing/timing.db
-  Last updated : 2026-03-22 20:23:47
+  Last updated : 2026-03-22 20:33:30
   Integrity    : OK
   Tables       : piksi_events sqlite_sequence teensy_telemetry timing_10min timing_data 
-  Row count [timing_10min] : 755
+  Row count [timing_10min] : 756
 
-OK    teensy_stats.db (43M, updated 151s ago)
+OK    teensy_stats.db (43M, updated 49s ago)
   Path         : /home/pi/teensy_appliance/teensy_stats.db
-  Last updated : 2026-03-22 20:21:18
+  Last updated : 2026-03-22 20:32:43
   Integrity    : OK
   Tables       : latest_state samples sqlite_sequence 
 
@@ -58,13 +58,64 @@ MAILTO=""
 
 
 [ GIT ]
+960bf26 Add repository tree to state snapshot
 0fae57b Update snapshot after removing cron auto-update
 b425f28 Add workflow section to snapshot
 987ad55 Auto update snapshot
 aef25f1 Add workflow section to snapshot
-16ca1b4 Improve state snapshot with timing quality summary
  M STATE_SNAPSHOT.txt
+ M rebuild/dump_state.sh
 
 ====================================================
 OK    OVERALL: PASS
 ====================================================
+
+[ REPOSITORY TREE ]
+.
+├── config
+├── LICENSE
+├── PROJECT_STATE.txt
+├── README.md
+├── rebuild
+│   ├── commit_with_snapshot.sh
+│   ├── deploy_snapshot.sh
+│   ├── dump_state.sh
+│   ├── enable_services.sh
+│   ├── install_packages.sh
+│   ├── rebuild_all.sh
+│   └── update_snapshot.sh
+├── scripts
+├── services
+├── snapshot
+│   ├── chrony
+│   │   └── chrony.conf
+│   ├── crontab_pi.txt
+│   ├── requirements_system.txt
+│   ├── scripts
+│   │   └── timing_daily_backup.sh
+│   ├── systemd
+│   │   ├── piksi-monitor.service
+│   │   ├── teensy-collector.service
+│   │   ├── teensy-dash2.service
+│   │   └── teensy_logger.service
+│   ├── system_packages.txt
+│   ├── teensy_appliance
+│   │   ├── collector.py
+│   │   └── dashboard.py
+│   ├── teensy_dash2
+│   │   ├── app.py
+│   │   ├── static
+│   │   └── templates
+│   └── timing
+│       ├── aggregate_10min.py
+│       ├── collector.py
+│       ├── init_db.py
+│       ├── piksi_monitor.py
+│       ├── plot_timing_report.py
+│       ├── prune_timing_db.py
+│       ├── send_timing_report.sh
+│       ├── teensy_logger.py
+│       └── teensy_logger.service
+└── STATE_SNAPSHOT.txt
+
+14 directories, 32 files

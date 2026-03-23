@@ -178,3 +178,12 @@ else
   red "OVERALL: FAIL"
 fi
 echo "===================================================="
+
+echo
+echo "[ REPOSITORY TREE ]"
+cd ~/time-server 2>/dev/null || exit 1
+if command -v tree >/dev/null 2>&1; then
+  tree -L 3 -I '.git|__pycache__|*.pyc|*.db|*.db-wal|*.db-shm|*.log|plots|data|backups'
+else
+  find . -maxdepth 3 | sort
+fi
