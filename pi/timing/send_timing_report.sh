@@ -1,4 +1,6 @@
 #!/bin/bash
+VERSION_FILE="/home/pi/time-server/VERSION.txt"
+REPO_VERSION="$(cat "$VERSION_FILE" 2>/dev/null || echo unknown)"
 set -euo pipefail
 
 BASE_DIR="/home/pi/timing"
@@ -355,7 +357,7 @@ import datetime
 from email.message import EmailMessage
 import subprocess
 
-TO = "bonnerglp@gmail.com"
+TO="bonnerglp@gmail.com"
 SUBJECT = "GNSS Timing Report - " + datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
 TEXT_BODY = "/tmp/timing_report_body.txt"
 HTML_BODY = "/tmp/timing_report_body.html"
