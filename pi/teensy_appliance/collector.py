@@ -1,3 +1,4 @@
+# VERSION_HELPER_AVAILABLE
 import os
 import socket
 import sqlite3

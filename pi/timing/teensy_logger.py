@@ -1,3 +1,4 @@
+# VERSION_HELPER_AVAILABLE
 #!/usr/bin/env python3
 import json
 import sqlite3

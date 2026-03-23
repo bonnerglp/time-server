@@ -1,3 +1,4 @@
+# VERSION_HELPER_AVAILABLE
 import math
 import os
 import sqlite3
