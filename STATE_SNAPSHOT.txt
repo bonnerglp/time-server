@@ -1,5 +1,5 @@
 ================ TIME SERVER STATUS ================
-Generated: 2026-03-22T20:44:39-04:00
+Generated: 2026-03-22T21:01:43-04:00
 
 [ SYSTEM ROLE ]
 Phase: Phase 1
@@ -67,11 +67,11 @@ OK    NTP port 123 listening
 OK    PPS selected by chrony
 Reference ID : 50505300 (PPS)
 Stratum      : 1
-System time  : 0.000000000 seconds slow of NTP time
-Last offset  : +0.000000979 seconds
-RMS offset   : 0.000000662 seconds
-Frequency    : 6.510 ppm fast
-Skew         : 0.242 ppm
+System time  : 0.000000075 seconds fast of NTP time
+Last offset  : +0.000000140 seconds
+RMS offset   : 0.000000456 seconds
+Frequency    : 6.350 ppm fast
+Skew         : 0.043 ppm
 Leap status  : Normal
 
 [ PPS SOURCE DETAIL ]
@@ -90,21 +90,21 @@ OK    PPS device(s): /dev/pps0 /dev/pps1
 [ TIMING QUALITY ]
 Latest logger line:
 2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
-aggregate.log age : 278s
-plot.log age      : 2373s
+aggregate.log age : 102s
+plot.log age      : 3397s
 piksi_monitor age : 1s
 
 [ DATABASE ]
-OK    timing.db (60M, updated 4s ago)
+OK    timing.db (60M, updated 2s ago)
   Path         : /home/pi/timing/timing.db
-  Last updated : 2026-03-22 20:44:35
+  Last updated : 2026-03-22 21:01:41
   Integrity    : OK
   Tables       : piksi_events sqlite_sequence teensy_telemetry timing_10min timing_data 
-  Row count [timing_10min] : 757
+  Row count [timing_10min] : 759
 
-OK    teensy_stats.db (43M, updated 41s ago)
+OK    teensy_stats.db (43M, updated 79s ago)
   Path         : /home/pi/teensy_appliance/teensy_stats.db
-  Last updated : 2026-03-22 20:43:58
+  Last updated : 2026-03-22 21:00:25
   Integrity    : OK
   Tables       : latest_state samples sqlite_sequence 
 
@@ -133,19 +133,63 @@ Full rebuild path:
   ~/time-server/rebuild/rebuild_all.sh
 
 [ GIT ]
+3521b4c Restructure repo: separate pi, teensy firmware, config, and snapshot; establish canonical layout
+e0bc2fe Clarify Piksi PPS and Ethernet fanout in snapshot
 29b8fa2 Clarify Piksi PPS and Ethernet fanout in snapshot
 b4eb947 Add repository tree to state snapshot
 960bf26 Add repository tree to state snapshot
-0fae57b Update snapshot after removing cron auto-update
-b425f28 Add workflow section to snapshot
  M STATE_SNAPSHOT.txt
 
 [ REPOSITORY TREE ]
 /home/pi/time-server
 ├── backups
 ├── config
+│   ├── chrony
+│   │   └── chrony.conf
+│   ├── cron
+│   │   └── crontab_pi.txt
+│   ├── env
+│   ├── network
+│   └── systemd
+│       ├── piksi-monitor.service
+│       ├── teensy-collector.service
+│       ├── teensy-dash2.service
+│       └── teensy_logger.service
 ├── data
+├── docs
+│   ├── architecture.md
+│   ├── hardware_wiring.md
+│   ├── network_ports.md
+│   ├── phases.md
+│   └── timing_pipeline.md
+├── hardware
+│   ├── bom
+│   │   └── parts_list.md
+│   ├── diagrams
+│   └── pinouts
+│       ├── piksi_connections.md
+│       ├── rpi_gpio.md
+│       └── teensy41_pinout.md
 ├── LICENSE
+├── pi
+│   ├── scripts
+│   ├── teensy_appliance
+│   │   ├── collector.py
+│   │   └── dashboard.py
+│   ├── teensy_dash2
+│   │   ├── app.py
+│   │   ├── static
+│   │   └── templates
+│   ├── timing
+│   │   ├── aggregate_10min.py
+│   │   ├── collector.py
+│   │   ├── init_db.py
+│   │   ├── piksi_monitor.py
+│   │   ├── plot_timing_report.py
+│   │   ├── prune_timing_db.py
+│   │   ├── send_timing_report.sh
+│   │   └── teensy_logger.py
+│   └── utils
 ├── plots
 ├── PROJECT_STATE.txt
 ├── README.md
@@ -190,10 +234,41 @@ b425f28 Add workflow section to snapshot
 │       ├── teensy_logger.py
 │       └── teensy_logger.service
 ├── STATE_SNAPSHOT.txt
+├── teensy
+│   ├── firmware
+│   │   └── teensy_telemetry
+│   ├── lib
+│   │   └── README.md
+│   ├── notes
+│   │   ├── measurement_plan.md
+│   │   ├── packet_format.md
+│   │   └── protocol.md
+│   ├── README.md
+│   └── test_vectors
 └── timing.db
 
-17 directories, 33 files
+41 directories, 64 files
 
 ====================================================
 OK    OVERALL: PASS
 ====================================================
+
+[ TEENSY FIRMWARE ]
+Location:
+  /home/pi/time-server/teensy/firmware/teensy_telemetry
+
+Build environment:
+  Arduino IDE with Teensy support
+
+Target:
+  Teensy 4.1
+
+Current role:
+  Analytics / telemetry / measurement (no discipline yet)
+
+Integration:
+  Receives Piksi-derived data via Ethernet path
+  Sends telemetry to Raspberry Pi
+
+Planned future role:
+  FE-5680A discipline and precision timing measurement
