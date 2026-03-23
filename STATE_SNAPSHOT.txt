@@ -1,5 +1,5 @@
 ================ TIME SERVER STATUS ================
-Generated: 2026-03-22T20:00:38-04:00
+Generated: 2026-03-22T20:23:49-04:00
 
 [ SERVICES ]
 OK    chrony.service running
@@ -16,11 +16,11 @@ OK    NTP port 123 listening
 OK    PPS selected by chrony
 Reference ID : 50505300 (PPS)
 Stratum      : 1
-System time  : 0.000000017 seconds fast of NTP time
-Last offset  : -0.000000122 seconds
-RMS offset   : 0.000000640 seconds
-Frequency    : 6.404 ppm fast
-Skew         : 0.043 ppm
+System time  : 0.000000001 seconds fast of NTP time
+Last offset  : -0.000001332 seconds
+RMS offset   : 0.000000677 seconds
+Frequency    : 6.474 ppm fast
+Skew         : 0.078 ppm
 Leap status  : Normal
 
 [ PPS DEVICES ]
@@ -29,21 +29,21 @@ OK    PPS device(s): /dev/pps0 /dev/pps1
 [ TIMING QUALITY ]
 Latest logger line:
 2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
-aggregate.log age : 37s
-plot.log age      : 3332s
-piksi_monitor age : 0s
+aggregate.log age : 228s
+plot.log age      : 1123s
+piksi_monitor age : 1s
 
 [ DATABASE ]
-OK    timing.db (60M, updated 3s ago)
+OK    timing.db (60M, updated 2s ago)
   Path         : /home/pi/timing/timing.db
-  Last updated : 2026-03-22 20:00:35
+  Last updated : 2026-03-22 20:23:47
   Integrity    : OK
   Tables       : piksi_events sqlite_sequence teensy_telemetry timing_10min timing_data 
-  Row count [timing_10min] : 753
+  Row count [timing_10min] : 755
 
-OK    teensy_stats.db (43M, updated 83s ago)
+OK    teensy_stats.db (43M, updated 151s ago)
   Path         : /home/pi/teensy_appliance/teensy_stats.db
-  Last updated : 2026-03-22 19:59:16
+  Last updated : 2026-03-22 20:21:18
   Integrity    : OK
   Tables       : latest_state samples sqlite_sequence 
 
@@ -58,11 +58,11 @@ MAILTO=""
 
 
 [ GIT ]
+0fae57b Update snapshot after removing cron auto-update
 b425f28 Add workflow section to snapshot
 987ad55 Auto update snapshot
 aef25f1 Add workflow section to snapshot
 16ca1b4 Improve state snapshot with timing quality summary
-1423260 Improve state snapshot and track live snapshot file
  M STATE_SNAPSHOT.txt
 
 ====================================================
