@@ -1,5 +1,5 @@
 ================ TIME SERVER STATUS ================
-Generated: 2026-03-22T21:25:08-04:00
+Generated: 2026-03-22T21:35:19-04:00
 
 [ SYSTEM ROLE ]
 Phase: Phase 1
@@ -67,11 +67,11 @@ OK    NTP port 123 listening
 OK    PPS selected by chrony
 Reference ID : 50505300 (PPS)
 Stratum      : 1
-System time  : 0.000000114 seconds fast of NTP time
-Last offset  : +0.000000034 seconds
-RMS offset   : 0.000000703 seconds
-Frequency    : 6.419 ppm fast
-Skew         : 0.042 ppm
+System time  : 0.000000191 seconds fast of NTP time
+Last offset  : +0.000000131 seconds
+RMS offset   : 0.000000353 seconds
+Frequency    : 6.283 ppm fast
+Skew         : 0.081 ppm
 Leap status  : Normal
 
 [ PPS SOURCE DETAIL ]
@@ -90,21 +90,21 @@ OK    PPS device(s): /dev/pps0 /dev/pps1
 [ TIMING QUALITY ]
 Latest logger line:
 2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
-aggregate.log age : 308s
-plot.log age      : 1203s
-piksi_monitor age : 1s
+aggregate.log age : 318s
+plot.log age      : 1813s
+piksi_monitor age : 3s
 
 [ DATABASE ]
-OK    timing.db (69M, updated 2s ago)
+OK    timing.db (69M, updated 1s ago)
   Path         : /home/pi/timing/timing.db
-  Last updated : 2026-03-22 21:25:07
+  Last updated : 2026-03-22 21:35:18
   Integrity    : OK
   Tables       : piksi_events sqlite_sequence teensy_telemetry timing_10min timing_data 
-  Row count [timing_10min] : 760
+  Row count [timing_10min] : 761
 
-OK    teensy_stats.db (50M, updated 121s ago)
+OK    teensy_stats.db (50M, updated 70s ago)
   Path         : /home/pi/teensy_appliance/teensy_stats.db
-  Last updated : 2026-03-22 21:23:08
+  Last updated : 2026-03-22 21:34:09
   Integrity    : OK
   Tables       : latest_state samples sqlite_sequence 
 
@@ -134,7 +134,7 @@ Full rebuild path:
 
 [ REPOSITORY VERSION ]
 Git version:
-  e889af5 [main]
+  de1ee0b [main]
 
 Version files:
   /home/pi/time-server/VERSION.txt
@@ -160,11 +160,11 @@ Planned future role:
   FE-5680A discipline and precision timing measurement
 
 [ GIT ]
+de1ee0b Add firmware and git version to Teensy telemetry packet
+833f29a Add real Teensy telemetry firmware and embed Git version
+bbcb6ab Add repo version to dashboard and generated timing reports
 e889af5 Add repo version to dashboard and generated timing reports
 fd255dc Finish repo_version tracking in live DB writers and Teensy collector
-37aea38 added teensy_config
-7b43d16 Restructure repo for Pi + Teensy; add firmware tree; update snapshot
-3521b4c Restructure repo: separate pi, teensy firmware, config, and snapshot; establish canonical layout
  M STATE_SNAPSHOT.txt
  M VERSION.txt
  M teensy/generated/git_version.h
