@@ -1,2 +1,2 @@
 #pragma once
-#define GIT_VERSION "fd255dc [main]"
+#define GIT_VERSION "e889af5 [main]"

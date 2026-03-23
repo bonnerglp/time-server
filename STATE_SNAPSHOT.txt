@@ -1,5 +1,5 @@
 ================ TIME SERVER STATUS ================
-Generated: 2026-03-22T21:04:01-04:00
+Generated: 2026-03-22T21:25:08-04:00
 
 [ SYSTEM ROLE ]
 Phase: Phase 1
@@ -67,11 +67,11 @@ OK    NTP port 123 listening
 OK    PPS selected by chrony
 Reference ID : 50505300 (PPS)
 Stratum      : 1
-System time  : 0.000000001 seconds fast of NTP time
-Last offset  : +0.000000045 seconds
-RMS offset   : 0.000000340 seconds
-Frequency    : 6.173 ppm fast
-Skew         : 0.027 ppm
+System time  : 0.000000114 seconds fast of NTP time
+Last offset  : +0.000000034 seconds
+RMS offset   : 0.000000703 seconds
+Frequency    : 6.419 ppm fast
+Skew         : 0.042 ppm
 Leap status  : Normal
 
 [ PPS SOURCE DETAIL ]
@@ -90,21 +90,21 @@ OK    PPS device(s): /dev/pps0 /dev/pps1
 [ TIMING QUALITY ]
 Latest logger line:
 2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
-aggregate.log age : 241s
-plot.log age      : 3536s
-piksi_monitor age : 3s
+aggregate.log age : 308s
+plot.log age      : 1203s
+piksi_monitor age : 1s
 
 [ DATABASE ]
-OK    timing.db (60M, updated 1s ago)
+OK    timing.db (69M, updated 2s ago)
   Path         : /home/pi/timing/timing.db
-  Last updated : 2026-03-22 21:04:01
+  Last updated : 2026-03-22 21:25:07
   Integrity    : OK
   Tables       : piksi_events sqlite_sequence teensy_telemetry timing_10min timing_data 
-  Row count [timing_10min] : 759
+  Row count [timing_10min] : 760
 
-OK    teensy_stats.db (43M, updated 217s ago)
+OK    teensy_stats.db (50M, updated 121s ago)
   Path         : /home/pi/teensy_appliance/teensy_stats.db
-  Last updated : 2026-03-22 21:00:25
+  Last updated : 2026-03-22 21:23:08
   Integrity    : OK
   Tables       : latest_state samples sqlite_sequence 
 
@@ -134,7 +134,7 @@ Full rebuild path:
 
 [ REPOSITORY VERSION ]
 Git version:
-  7b43d16-dirty [main]
+  e889af5 [main]
 
 Version files:
   /home/pi/time-server/VERSION.txt
@@ -160,25 +160,14 @@ Planned future role:
   FE-5680A discipline and precision timing measurement
 
 [ GIT ]
+e889af5 Add repo version to dashboard and generated timing reports
+fd255dc Finish repo_version tracking in live DB writers and Teensy collector
+37aea38 added teensy_config
 7b43d16 Restructure repo for Pi + Teensy; add firmware tree; update snapshot
 3521b4c Restructure repo: separate pi, teensy firmware, config, and snapshot; establish canonical layout
-e0bc2fe Clarify Piksi PPS and Ethernet fanout in snapshot
-29b8fa2 Clarify Piksi PPS and Ethernet fanout in snapshot
-b4eb947 Add repository tree to state snapshot
  M STATE_SNAPSHOT.txt
- M pi/teensy_appliance/collector.py
- M pi/teensy_dash2/app.py
- M pi/timing/collector.py
- M pi/timing/piksi_monitor.py
- M pi/timing/teensy_logger.py
- M teensy/firmware/teensy_telemetry/teensy_telemetry.ino
-?? VERSION.txt
-?? pi/scripts/
-?? pi/utils/
-?? rebuild/commit_with_version_and_snapshot.sh
-?? rebuild/update_snapshot_with_version.sh
-?? rebuild/update_version.sh
-?? teensy/generated/
+ M VERSION.txt
+ M teensy/generated/git_version.h
 
 [ REPOSITORY TREE ]
 /home/pi/time-server
@@ -213,10 +202,14 @@ b4eb947 Add repository tree to state snapshot
 ├── LICENSE
 ├── pi
 │   ├── scripts
+│   │   ├── migrate_add_repo_version.py
+│   │   ├── __pycache__
+│   │   ├── show_db_versions.py
 │   │   └── show_version.py
 │   ├── teensy_appliance
 │   │   ├── collector.py
-│   │   └── dashboard.py
+│   │   ├── dashboard.py
+│   │   └── __pycache__
 │   ├── teensy_dash2
 │   │   ├── app.py
 │   │   ├── static
@@ -228,9 +221,13 @@ b4eb947 Add repository tree to state snapshot
 │   │   ├── piksi_monitor.py
 │   │   ├── plot_timing_report.py
 │   │   ├── prune_timing_db.py
+│   │   ├── __pycache__
 │   │   ├── send_timing_report.sh
 │   │   └── teensy_logger.py
 │   └── utils
+│       ├── db_versioning.py
+│       ├── __pycache__
+│       ├── sql_insert_examples.txt
 │       └── version.py
 ├── plots
 ├── PROJECT_STATE.txt
@@ -295,7 +292,7 @@ b4eb947 Add repository tree to state snapshot
 ├── timing.db
 └── VERSION.txt
 
-42 directories, 71 files
+46 directories, 75 files
 
 ====================================================
 OK    OVERALL: PASS
