@@ -1,5 +1,56 @@
 ================ TIME SERVER STATUS ================
-Generated: 2026-03-22T20:33:31-04:00
+Generated: 2026-03-22T20:44:07-04:00
+
+[ SYSTEM ROLE ]
+Phase: Phase 1
+Time server host: Raspberry Pi
+Primary active timing source: Piksi PPS into Raspberry Pi / chrony
+PPS fanout: Piksi PPS -> Raspberry Pi and Teensy
+Ethernet/data fanout: Piksi Ethernet -> Raspberry Pi and Teensy
+Teensy role: analytics / telemetry / measurement only
+Teensy timing role: not yet disciplining Raspberry Pi
+FE-5680A role: not yet integrated into active timing chain
+
+[ HARDWARE / SIGNAL CHAIN ]
+Primary host:
+  Raspberry Pi time server
+
+Current active timing chain:
+  Piksi PPS -> Raspberry Pi PPS input -> chrony -> NTP service
+
+Current PPS distribution:
+  Piksi PPS -> Raspberry Pi
+  Piksi PPS -> Teensy
+
+Current Ethernet / data distribution:
+  Piksi Ethernet -> Raspberry Pi
+  Piksi Ethernet -> Teensy
+
+Current analytics chain:
+  Teensy -> UDP telemetry collector -> logger -> dashboard
+
+Current active software components:
+  chrony
+  piksi-monitor.service
+  teensy-collector.service
+  teensy-dash2.service
+  teensy_logger.service
+
+Planned / known project hardware:
+  Piksi in current active chain
+  ZED-F9T planned / available for later migration
+  Teensy 4.1 for analytics / measurement / future discipline work
+  FE-5680A planned for later holdover / discipline phase
+
+Repository model:
+  Git stores source, config, services, rebuild scripts, and state snapshot
+  Git does NOT store live DB history, logs, plots, or virtualenvs
+
+[ NETWORK ]
+Hostname:
+raspberrypi
+IP address(es):
+10.0.0.125 2601:19e:4680:b410::19d1 2601:19e:4680:b410:46cd:5377:5ef7:32d0 
 
 [ SERVICES ]
 OK    chrony.service running
@@ -16,12 +67,22 @@ OK    NTP port 123 listening
 OK    PPS selected by chrony
 Reference ID : 50505300 (PPS)
 Stratum      : 1
-System time  : 0.000001084 seconds fast of NTP time
-Last offset  : +0.000001082 seconds
-RMS offset   : 0.000001471 seconds
-Frequency    : 6.226 ppm fast
-Skew         : 0.164 ppm
+System time  : 0.000000000 seconds fast of NTP time
+Last offset  : -0.000000297 seconds
+RMS offset   : 0.000000739 seconds
+Frequency    : 6.328 ppm fast
+Skew         : 0.104 ppm
 Leap status  : Normal
+
+[ PPS SOURCE DETAIL ]
+refclock PPS /dev/pps0 refid PPS precision 1e-7 poll 2 prefer
+
+[ GNSS / DATA INPUT DETAIL ]
+Configured operating note:
+  Piksi PPS feeds Raspberry Pi and Teensy
+  Piksi Ethernet feeds Raspberry Pi and Teensy
+  Teensy is analytics-only at this stage
+Available tty devices of interest:
 
 [ PPS DEVICES ]
 OK    PPS device(s): /dev/pps0 /dev/pps1
@@ -29,21 +90,21 @@ OK    PPS device(s): /dev/pps0 /dev/pps1
 [ TIMING QUALITY ]
 Latest logger line:
 2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
-aggregate.log age : 211s
-plot.log age      : 1706s
-piksi_monitor age : 3s
+aggregate.log age : 247s
+plot.log age      : 2342s
+piksi_monitor age : 2s
 
 [ DATABASE ]
 OK    timing.db (60M, updated 2s ago)
   Path         : /home/pi/timing/timing.db
-  Last updated : 2026-03-22 20:33:30
+  Last updated : 2026-03-22 20:44:06
   Integrity    : OK
   Tables       : piksi_events sqlite_sequence teensy_telemetry timing_10min timing_data 
-  Row count [timing_10min] : 756
+  Row count [timing_10min] : 757
 
-OK    teensy_stats.db (43M, updated 49s ago)
+OK    teensy_stats.db (43M, updated 10s ago)
   Path         : /home/pi/teensy_appliance/teensy_stats.db
-  Last updated : 2026-03-22 20:32:43
+  Last updated : 2026-03-22 20:43:58
   Integrity    : OK
   Tables       : latest_state samples sqlite_sequence 
 
@@ -57,23 +118,36 @@ MAILTO=""
 0 7 * * * /home/pi/timing/send_timing_report.sh >> /home/pi/timing/report.log 2>&1
 
 
+[ KNOWN ISSUES ]
+- Occasional SQLite 'database is locked (5)' during report generation; email still succeeds
+- teensy_logger.out may show an older last phase line even while timing.db is still updating
+
+[ WORKFLOW ]
+Refresh snapshot locally:
+  ~/time-server/rebuild/dump_state.sh > ~/time-server/STATE_SNAPSHOT.txt
+
+Commit and push with fresh snapshot:
+  ~/time-server/rebuild/commit_with_snapshot.sh "commit message"
+
+Full rebuild path:
+  ~/time-server/rebuild/rebuild_all.sh
+
 [ GIT ]
+b4eb947 Add repository tree to state snapshot
 960bf26 Add repository tree to state snapshot
 0fae57b Update snapshot after removing cron auto-update
 b425f28 Add workflow section to snapshot
 987ad55 Auto update snapshot
-aef25f1 Add workflow section to snapshot
  M STATE_SNAPSHOT.txt
  M rebuild/dump_state.sh
 
-====================================================
-OK    OVERALL: PASS
-====================================================
-
 [ REPOSITORY TREE ]
-.
+/home/pi/time-server
+├── backups
 ├── config
+├── data
 ├── LICENSE
+├── plots
 ├── PROJECT_STATE.txt
 ├── README.md
 ├── rebuild
@@ -116,6 +190,11 @@ OK    OVERALL: PASS
 │       ├── send_timing_report.sh
 │       ├── teensy_logger.py
 │       └── teensy_logger.service
-└── STATE_SNAPSHOT.txt
+├── STATE_SNAPSHOT.txt
+└── timing.db
 
-14 directories, 32 files
+17 directories, 33 files
+
+====================================================
+OK    OVERALL: PASS
+====================================================

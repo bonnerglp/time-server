@@ -11,6 +11,60 @@ echo "================ TIME SERVER STATUS ================"
 echo "Generated: $(date -Is)"
 echo
 
+echo "[ SYSTEM ROLE ]"
+echo "Phase: Phase 1"
+echo "Time server host: Raspberry Pi"
+echo "Primary active timing source: Piksi PPS into Raspberry Pi / chrony"
+echo "PPS fanout: Piksi PPS -> Raspberry Pi and Teensy"
+echo "Ethernet/data fanout: Piksi Ethernet -> Raspberry Pi and Teensy"
+echo "Teensy role: analytics / telemetry / measurement only"
+echo "Teensy timing role: not yet disciplining Raspberry Pi"
+echo "FE-5680A role: not yet integrated into active timing chain"
+echo
+
+echo "[ HARDWARE / SIGNAL CHAIN ]"
+echo "Primary host:"
+echo "  Raspberry Pi time server"
+echo
+echo "Current active timing chain:"
+echo "  Piksi PPS -> Raspberry Pi PPS input -> chrony -> NTP service"
+echo
+echo "Current PPS distribution:"
+echo "  Piksi PPS -> Raspberry Pi"
+echo "  Piksi PPS -> Teensy"
+echo
+echo "Current Ethernet / data distribution:"
+echo "  Piksi Ethernet -> Raspberry Pi"
+echo "  Piksi Ethernet -> Teensy"
+echo
+echo "Current analytics chain:"
+echo "  Teensy -> UDP telemetry collector -> logger -> dashboard"
+echo
+echo "Current active software components:"
+echo "  chrony"
+echo "  piksi-monitor.service"
+echo "  teensy-collector.service"
+echo "  teensy-dash2.service"
+echo "  teensy_logger.service"
+echo
+echo "Planned / known project hardware:"
+echo "  Piksi in current active chain"
+echo "  ZED-F9T planned / available for later migration"
+echo "  Teensy 4.1 for analytics / measurement / future discipline work"
+echo "  FE-5680A planned for later holdover / discipline phase"
+echo
+echo "Repository model:"
+echo "  Git stores source, config, services, rebuild scripts, and state snapshot"
+echo "  Git does NOT store live DB history, logs, plots, or virtualenvs"
+echo
+
+echo "[ NETWORK ]"
+echo "Hostname:"
+hostname
+echo "IP address(es):"
+hostname -I 2>/dev/null || true
+echo
+
 echo "[ SERVICES ]"
 for svc in chrony.service teensy-collector.service teensy-dash2.service teensy_logger.service piksi-monitor.service; do
   if systemctl is-active --quiet "$svc"; then
@@ -69,6 +123,19 @@ else
 fi
 echo
 
+echo "[ PPS SOURCE DETAIL ]"
+grep -Ei 'refclock|pps' /etc/chrony/chrony.conf 2>/dev/null || true
+echo
+
+echo "[ GNSS / DATA INPUT DETAIL ]"
+echo "Configured operating note:"
+echo "  Piksi PPS feeds Raspberry Pi and Teensy"
+echo "  Piksi Ethernet feeds Raspberry Pi and Teensy"
+echo "  Teensy is analytics-only at this stage"
+echo "Available tty devices of interest:"
+ls -l /dev/tty* 2>/dev/null | grep -E 'USB|ACM' || true
+echo
+
 echo "[ PPS DEVICES ]"
 pps_list="$(ls /dev/pps* 2>/dev/null || true)"
 if [ -n "$pps_list" ]; then
@@ -113,7 +180,7 @@ check_sqlite_db() {
   local db="$1"
   [ -f "$db" ] || return 0
 
-  local size mtime age integrity tables
+  local size mtime age integrity tables rows
   size=$(du -h "$db" | cut -f1)
   mtime=$(date -r "$db" "+%Y-%m-%d %H:%M:%S")
   age=$(( $(date +%s) - $(stat -c %Y "$db") ))
@@ -165,10 +232,30 @@ echo "[ CRON ]"
 crontab -l 2>/dev/null || yellow "No crontab for pi"
 echo
 
+echo "[ KNOWN ISSUES ]"
+echo "- Occasional SQLite 'database is locked (5)' during report generation; email still succeeds"
+echo "- teensy_logger.out may show an older last phase line even while timing.db is still updating"
+echo
+
+echo "[ WORKFLOW ]"
+echo "Refresh snapshot locally:"
+echo "  ~/time-server/rebuild/dump_state.sh > ~/time-server/STATE_SNAPSHOT.txt"
+echo
+echo "Commit and push with fresh snapshot:"
+echo "  ~/time-server/rebuild/commit_with_snapshot.sh \"commit message\""
+echo
+echo "Full rebuild path:"
+echo "  ~/time-server/rebuild/rebuild_all.sh"
+echo
+
 echo "[ GIT ]"
 cd ~/time-server 2>/dev/null || exit 1
 git log --oneline -n 5 || true
 git status --short || true
+echo
+
+echo "[ REPOSITORY TREE ]"
+tree -L 3 ~/time-server 2>/dev/null || find ~/time-server -maxdepth 3 | sort
 echo
 
 echo "===================================================="
@@ -178,12 +265,3 @@ else
   red "OVERALL: FAIL"
 fi
 echo "===================================================="
-
-echo
-echo "[ REPOSITORY TREE ]"
-cd ~/time-server 2>/dev/null || exit 1
-if command -v tree >/dev/null 2>&1; then
-  tree -L 3 -I '.git|__pycache__|*.pyc|*.db|*.db-wal|*.db-shm|*.log|plots|data|backups'
-else
-  find . -maxdepth 3 | sort
-fi
