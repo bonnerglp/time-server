@@ -46,3 +46,5 @@ Thumbs.db
 *.elf
 *.hex
 *.bin
+VERSION.txt
+teensy/generated/git_version.h
