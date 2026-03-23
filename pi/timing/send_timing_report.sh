@@ -101,6 +101,7 @@ IFS='|' read -r MEAN24 STD24 P2P24 MIN24 MAX24 < "$QUALITY24_FILE"
 
 cat > "$TEXT_BODY" <<TXT
 GNSS TIMING REPORT
+System version: ${REPO_VERSION}
 Generated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
 
 Timing Quality Summary (Last 24 Hours)

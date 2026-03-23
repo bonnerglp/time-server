@@ -1,3 +1,13 @@
+from pathlib import Path
+import sys
+
+REPO_ROOT = "/home/pi/time-server"
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+from pi.utils.version import get_version
+REPO_VERSION = get_version()
+
 # VERSION_HELPER_AVAILABLE
 import math
 import os
@@ -9,6 +19,11 @@ DB_PATH = "/home/pi/teensy_appliance/teensy_stats.db"
 HTTP_PORT = int(os.environ.get("DASHBOARD_PORT", "8082"))
 
 app = Flask(__name__)
+
+@app.context_processor
+def inject_repo_version():
+    return {"repo_version": REPO_VERSION}
+
 
 def db():
     conn = sqlite3.connect(DB_PATH)

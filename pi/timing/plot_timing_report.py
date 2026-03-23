@@ -1,3 +1,13 @@
+from pathlib import Path
+import sys
+
+REPO_ROOT = "/home/pi/time-server"
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+from pi.utils.version import get_version
+REPO_VERSION = get_version()
+
 #!/usr/bin/env python3
 import os
 import sqlite3
@@ -631,3 +641,22 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+def _prepend_system_version(path_str, repo_version):
+    from pathlib import Path
+    p = Path(path_str)
+    if not p.exists():
+        return
+    try:
+        text = p.read_text(encoding="utf-8")
+    except Exception:
+        return
+    line = f"System version: {repo_version}\n"
+    if text.startswith(line):
+        return
+    p.write_text(line + "\n" + text, encoding="utf-8")
+
+_prepend_system_version("/home/pi/timing/report_summary.txt", REPO_VERSION)
+_prepend_system_version("/home/pi/timing/latest_snapshot.txt", REPO_VERSION)
