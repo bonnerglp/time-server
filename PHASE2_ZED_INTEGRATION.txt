@@ -1,0 +1,18 @@
+ZED-F9T INTEGRATION COMPLETE
+
+- ZED-F9T connected via USB to Raspberry Pi
+- Exposed over network via ser2net (TCP port 4001)
+- Remote control verified using u-center
+- Timing mode (TMODE3) configured
+- Survey-in completed (initial 300s)
+- PPS configured:
+  - 1 Hz
+  - UTC aligned
+  - 100 ms pulse width
+- PPS verified on Raspberry Pi via /dev/pps0 (currently Piksi source)
+- ZED PPS not yet connected to Pi GPIO
+
+Next steps:
+- Connect ZED PPS to Pi (or dual PPS setup)
+- Compare ZED vs Piksi PPS performance
+- Integrate into chrony as primary reference
