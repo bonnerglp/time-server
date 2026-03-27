@@ -1,0 +1,280 @@
+================ TIME SERVER STATUS ================
+Generated: 2026-03-27T16:07:39-04:00
+
+[ SYSTEM ROLE ]
+Phase: Phase 1
+Time server host: Raspberry Pi
+Primary active timing source: Piksi PPS into Raspberry Pi / chrony
+PPS fanout: Piksi PPS -> Raspberry Pi and Teensy
+Ethernet/data fanout: Piksi Ethernet -> Raspberry Pi and Teensy
+Teensy role: analytics / telemetry / measurement only
+Teensy timing role: not yet disciplining Raspberry Pi
+FE-5680A role: not yet integrated into active timing chain
+
+[ HARDWARE / SIGNAL CHAIN ]
+Primary host:
+  Raspberry Pi time server
+
+Current active timing chain:
+  Piksi PPS -> Raspberry Pi PPS input -> chrony -> NTP service
+
+Current PPS distribution:
+  Piksi PPS -> Raspberry Pi
+  Piksi PPS -> Teensy
+
+Current Ethernet / data distribution:
+  Piksi Ethernet -> Raspberry Pi
+  Piksi Ethernet -> Teensy
+
+Current analytics chain:
+  Teensy -> UDP telemetry collector -> logger -> dashboard
+
+Current active software components:
+  chrony
+  piksi-monitor.service
+  teensy-collector.service
+  teensy-dash2.service
+  teensy_logger.service
+
+Planned / known project hardware:
+  Piksi in current active chain
+  ZED-F9T planned / available for later migration
+  Teensy 4.1 for analytics / measurement / future discipline work
+  FE-5680A planned for later holdover / discipline phase
+
+Repository model:
+  Git stores source, config, services, rebuild scripts, and state snapshot
+  Git does NOT store live DB history, logs, plots, or virtualenvs
+
+[ NETWORK ]
+Hostname:
+raspberrypi
+IP address(es):
+10.0.0.125 2601:19e:4680:b410::fa2d 2601:19e:4680:b410:46cd:5377:5ef7:32d0 
+
+[ SERVICES ]
+OK    chrony.service running
+OK    teensy-collector.service running
+OK    teensy-dash2.service running
+OK    teensy_logger.service running
+OK    piksi-monitor.service running
+
+[ PORTS ]
+OK    Dashboard listening on 8082
+OK    NTP port 123 listening
+
+[ TIME SYNC ]
+OK    PPS selected by chrony
+Reference ID : 50505300 (PPS)
+Stratum      : 1
+System time  : 0.000000007 seconds fast of NTP time
+Last offset  : -0.000000133 seconds
+RMS offset   : 0.000122335 seconds
+Frequency    : 5.488 ppm fast
+Skew         : 0.012 ppm
+Leap status  : Normal
+
+[ PPS SOURCE DETAIL ]
+refclock SHM 0 refid NMEA offset 0.0 delay 0.2
+refclock PPS /dev/pps0 refid PPS precision 1e-7 poll 2 prefer lock NMEA
+
+[ GNSS / DATA INPUT DETAIL ]
+Configured operating note:
+  Piksi PPS feeds Raspberry Pi and Teensy
+  Piksi Ethernet feeds Raspberry Pi and Teensy
+  Teensy is analytics-only at this stage
+Available tty devices of interest:
+crw-rw---- 1 root dialout 166,  0 Mar 27 16:01 /dev/ttyACM0
+
+[ PPS DEVICES ]
+OK    PPS device(s): /dev/pps0 /dev/pps1
+
+[ TIMING QUALITY ]
+Latest logger line:
+2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
+aggregate.log age : 459s
+plot.log age      : 153s
+piksi_monitor age : 2s
+
+[ DATABASE ]
+WARN  timing.db (102M, updated 459s ago)
+  Path         : /home/pi/timing/timing.db
+  Last updated : 2026-03-27 16:00:01
+  Integrity    : OK
+  Tables       : piksi_events sqlite_sequence teensy_telemetry timing_10min timing_data 
+  Row count [timing_10min] : 1432
+
+OK    teensy_stats.db (50M, updated 11s ago)
+  Path         : /home/pi/teensy_appliance/teensy_stats.db
+  Last updated : 2026-03-27 16:07:29
+  Integrity    : OK
+  Tables       : latest_state samples sqlite_sequence 
+
+[ CRON ]
+MAILTO=""
+
+*/10 * * * * /usr/bin/python3 /home/pi/timing/aggregate_10min.py >> /home/pi/timing/aggregate.log 2>&1
+15 3 * * * /usr/bin/python3 /home/pi/timing/prune_timing_db.py >> /home/pi/timing/prune.log 2>&1
+5 * * * * /usr/bin/python3 /home/pi/timing/plot_timing_report.py >> /home/pi/timing/plot.log 2>&1
+50 6 * * * /usr/local/bin/timing_daily_backup.sh >> /home/pi/timing/backup.log 2>&1
+0 7 * * * /home/pi/timing/send_timing_report.sh >> /home/pi/timing/report.log 2>&1
+
+
+[ KNOWN ISSUES ]
+- Occasional SQLite 'database is locked (5)' during report generation; email still succeeds
+- teensy_logger.out may show an older last phase line even while timing.db is still updating
+
+[ WORKFLOW ]
+Refresh snapshot locally:
+  ~/time-server/rebuild/dump_state.sh > ~/time-server/STATE_SNAPSHOT.txt
+
+Commit and push with fresh snapshot:
+  ~/time-server/rebuild/commit_with_snapshot.sh "commit message"
+
+Full rebuild path:
+  ~/time-server/rebuild/rebuild_all.sh
+
+[ GIT ]
+fca7836 Add system configuration: zed splitter service, gpsd-direct, ser2net config, gpsd config, and splitter script for stable USB GNSS architecture
+1624d60 Phase 2: ZED-F9T integration, timing mode configured, PPS validated
+189a5f0 Ignore generated version files to prevent dirty repo state
+0eaf51e Fix report email script version variable handling
+bf73cd9 Add Teensy telemetry version fields and update dashboard/report version tracking
+?? system_config/STATE_SNAPSHOT.txt
+
+[ REPOSITORY TREE ]
+/home/pi/time-server
+├── backups
+├── config
+│   ├── chrony
+│   │   └── chrony.conf
+│   ├── cron
+│   │   └── crontab_pi.txt
+│   ├── env
+│   ├── network
+│   └── systemd
+│       ├── piksi-monitor.service
+│       ├── teensy-collector.service
+│       ├── teensy-dash2.service
+│       └── teensy_logger.service
+├── data
+├── docs
+│   ├── architecture.md
+│   ├── hardware_wiring.md
+│   ├── network_ports.md
+│   ├── phases.md
+│   └── timing_pipeline.md
+├── hardware
+│   ├── bom
+│   │   └── parts_list.md
+│   ├── diagrams
+│   └── pinouts
+│       ├── piksi_connections.md
+│       ├── rpi_gpio.md
+│       └── teensy41_pinout.md
+├── LICENSE
+├── PHASE2_ZED_INTEGRATION.txt
+├── pi
+│   ├── scripts
+│   │   ├── migrate_add_repo_version.py
+│   │   ├── __pycache__
+│   │   ├── show_db_versions.py
+│   │   └── show_version.py
+│   ├── teensy_appliance
+│   │   ├── collector.py
+│   │   ├── dashboard.py
+│   │   └── __pycache__
+│   ├── teensy_dash2
+│   │   ├── app.py
+│   │   ├── static
+│   │   └── templates
+│   ├── timing
+│   │   ├── aggregate_10min.py
+│   │   ├── collector.py
+│   │   ├── init_db.py
+│   │   ├── piksi_monitor.py
+│   │   ├── plot_timing_report.py
+│   │   ├── prune_timing_db.py
+│   │   ├── __pycache__
+│   │   ├── send_timing_report.sh
+│   │   └── teensy_logger.py
+│   └── utils
+│       ├── db_versioning.py
+│       ├── __pycache__
+│       ├── sql_insert_examples.txt
+│       └── version.py
+├── plots
+├── PROJECT_STATE.txt
+├── README.md
+├── rebuild
+│   ├── commit_with_snapshot.sh
+│   ├── commit_with_version_and_snapshot.sh
+│   ├── deploy_snapshot.sh
+│   ├── dump_state.sh
+│   ├── enable_services.sh
+│   ├── install_packages.sh
+│   ├── rebuild_all.sh
+│   ├── update_snapshot.sh
+│   ├── update_snapshot_with_version.sh
+│   └── update_version.sh
+├── scripts
+├── services
+├── snapshot
+│   ├── chrony
+│   │   └── chrony.conf
+│   ├── crontab_pi.txt
+│   ├── requirements_system.txt
+│   ├── scripts
+│   │   └── timing_daily_backup.sh
+│   ├── systemd
+│   │   ├── piksi-monitor.service
+│   │   ├── teensy-collector.service
+│   │   ├── teensy-dash2.service
+│   │   └── teensy_logger.service
+│   ├── system_packages.txt
+│   ├── teensy_appliance
+│   │   ├── collector.py
+│   │   └── dashboard.py
+│   ├── teensy_dash2
+│   │   ├── app.py
+│   │   ├── static
+│   │   └── templates
+│   └── timing
+│       ├── aggregate_10min.py
+│       ├── collector.py
+│       ├── init_db.py
+│       ├── piksi_monitor.py
+│       ├── plot_timing_report.py
+│       ├── prune_timing_db.py
+│       ├── send_timing_report.sh
+│       ├── teensy_logger.py
+│       └── teensy_logger.service
+├── STATE_SNAPSHOT.txt
+├── system_config
+│   ├── gpsd
+│   ├── gpsd-direct.service
+│   ├── ser2net.yaml
+│   ├── STATE_SNAPSHOT.txt
+│   ├── zed_splitter.py
+│   └── zed-splitter.service
+├── teensy
+│   ├── firmware
+│   │   └── teensy_telemetry
+│   ├── generated
+│   │   └── git_version.h
+│   ├── lib
+│   │   └── README.md
+│   ├── notes
+│   │   ├── measurement_plan.md
+│   │   ├── packet_format.md
+│   │   └── protocol.md
+│   ├── README.md
+│   └── test_vectors
+├── timing.db
+└── VERSION.txt
+
+47 directories, 82 files
+
+====================================================
+OK    OVERALL: PASS
+====================================================
