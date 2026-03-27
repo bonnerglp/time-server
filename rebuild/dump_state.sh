@@ -14,9 +14,9 @@ echo
 echo "[ SYSTEM ROLE ]"
 echo "Phase: Phase 1"
 echo "Time server host: Raspberry Pi"
-echo "Primary active timing source: Piksi PPS into Raspberry Pi / chrony"
-echo "PPS fanout: Piksi PPS -> Raspberry Pi and Teensy"
-echo "Ethernet/data fanout: Piksi Ethernet -> Raspberry Pi and Teensy"
+echo "Primary active timing source: ZED-F9T PPS into Raspberry Pi / chrony"
+echo "PPS fanout: ZED-F9T PPS -> Raspberry Pi and Teensy"
+echo "Ethernet/data fanout: ZED-F9T USB -> zed-splitter -> gpsd-direct and ser2net"
 echo "Teensy role: analytics / telemetry / measurement only"
 echo "Teensy timing role: not yet disciplining Raspberry Pi"
 echo "FE-5680A role: not yet integrated into active timing chain"
@@ -27,30 +27,34 @@ echo "Primary host:"
 echo "  Raspberry Pi time server"
 echo
 echo "Current active timing chain:"
-echo "  Piksi PPS -> Raspberry Pi PPS input -> chrony -> NTP service"
+echo "  ZED-F9T PPS -> Raspberry Pi PPS input -> chrony -> NTP service"
 echo
 echo "Current PPS distribution:"
-echo "  Piksi PPS -> Raspberry Pi"
-echo "  Piksi PPS -> Teensy"
+echo "  ZED-F9T PPS -> Raspberry Pi"
+echo "  ZED-F9T PPS -> Teensy"
 echo
 echo "Current Ethernet / data distribution:"
-echo "  Piksi Ethernet -> Raspberry Pi"
-echo "  Piksi Ethernet -> Teensy"
+echo "  ZED-F9T USB -> Raspberry Pi"
+echo "  zed-splitter -> gpsd-direct"
+echo "  zed-splitter -> ser2net"
+echo "  ser2net -> remote u-center monitoring"
 echo
 echo "Current analytics chain:"
 echo "  Teensy -> UDP telemetry collector -> logger -> dashboard"
 echo
 echo "Current active software components:"
 echo "  chrony"
-echo "  piksi-monitor.service"
+echo "  zed-splitter.service"
+echo "  gpsd-direct.service"
+echo "  ser2net.service"
 echo "  teensy-collector.service"
 echo "  teensy-dash2.service"
 echo "  teensy_logger.service"
 echo
 echo "Planned / known project hardware:"
-echo "  Piksi in current active chain"
-echo "  ZED-F9T planned / available for later migration"
+echo "  ZED-F9T in current active chain"
 echo "  Teensy 4.1 for analytics / measurement / future discipline work"
+echo "  Piksi retained as optional comparison / reference source"
 echo "  FE-5680A planned for later holdover / discipline phase"
 echo
 echo "Repository model:"
@@ -66,7 +70,7 @@ hostname -I 2>/dev/null || true
 echo
 
 echo "[ SERVICES ]"
-for svc in chrony.service teensy-collector.service teensy-dash2.service teensy_logger.service piksi-monitor.service; do
+for svc in chrony.service zed-splitter.service gpsd-direct.service ser2net.service teensy-collector.service teensy-dash2.service teensy_logger.service; do
   if systemctl is-active --quiet "$svc"; then
     green "$svc running"
   else
@@ -129,11 +133,12 @@ echo
 
 echo "[ GNSS / DATA INPUT DETAIL ]"
 echo "Configured operating note:"
-echo "  Piksi PPS feeds Raspberry Pi and Teensy"
-echo "  Piksi Ethernet feeds Raspberry Pi and Teensy"
-echo "  Teensy is analytics-only at this stage"
+echo "  ZED-F9T PPS feeds Raspberry Pi and Teensy"
+echo "  ZED-F9T USB feeds Raspberry Pi"
+echo "  zed-splitter provides shared read access to gpsd-direct and ser2net"
+echo "  Direct USB is used for configuration writes; TCP is for monitoring only"
 echo "Available tty devices of interest:"
-ls -l /dev/tty* 2>/dev/null | grep -E 'USB|ACM' || true
+ls -l /dev/ttyACM* 2>/dev/null || true
 echo
 
 echo "[ PPS DEVICES ]"
@@ -159,20 +164,6 @@ else
   yellow "Missing /home/pi/timing/teensy_logger.out"
 fi
 
-if [ -f /home/pi/timing/aggregate.log ]; then
-  agg_age=$(( $(date +%s) - $(stat -c %Y /home/pi/timing/aggregate.log) ))
-  echo "aggregate.log age : ${agg_age}s"
-fi
-
-if [ -f /home/pi/timing/plot.log ]; then
-  plot_age=$(( $(date +%s) - $(stat -c %Y /home/pi/timing/plot.log) ))
-  echo "plot.log age      : ${plot_age}s"
-fi
-
-if [ -f /home/pi/timing/piksi_monitor.log ]; then
-  piksi_age=$(( $(date +%s) - $(stat -c %Y /home/pi/timing/piksi_monitor.log) ))
-  echo "piksi_monitor age : ${piksi_age}s"
-fi
 echo
 
 echo "[ DATABASE ]"
@@ -180,7 +171,7 @@ check_sqlite_db() {
   local db="$1"
   [ -f "$db" ] || return 0
 
-  local size mtime age integrity tables rows
+  local size mtime age
   size=$(du -h "$db" | cut -f1)
   mtime=$(date -r "$db" "+%Y-%m-%d %H:%M:%S")
   age=$(( $(date +%s) - $(stat -c %Y "$db") ))
@@ -192,54 +183,19 @@ check_sqlite_db() {
   fi
   echo "  Path         : $db"
   echo "  Last updated : $mtime"
-
-  if command -v sqlite3 >/dev/null 2>&1; then
-    integrity=$(sqlite3 "$db" "PRAGMA integrity_check;" 2>/dev/null | head -n 1)
-    if [ "$integrity" = "ok" ]; then
-      echo "  Integrity    : OK"
-    elif [ -n "$integrity" ]; then
-      echo "  Integrity    : $integrity"
-      fail=1
-    else
-      echo "  Integrity    : unable to check"
-    fi
-
-    tables=$(sqlite3 "$db" "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;" 2>/dev/null | tr '\n' ' ')
-    echo "  Tables       : ${tables:-none}"
-
-    for tbl in timing_samples timing_10min telemetry pps_stats measurements phase_data; do
-      if sqlite3 "$db" "SELECT 1 FROM sqlite_master WHERE type='table' AND name='$tbl';" 2>/dev/null | grep -q 1; then
-        rows=$(sqlite3 "$db" "SELECT COUNT(*) FROM \"$tbl\";" 2>/dev/null)
-        echo "  Row count [$tbl] : $rows"
-      fi
-    done
-  else
-    echo "  sqlite3 not installed; skipping integrity and row counts"
-  fi
   echo
 }
 
 for db in \
   /home/pi/timing/timing.db \
-  /home/pi/teensy_appliance/teensy_stats.db \
-  /mnt/*/*.db \
-  /mnt/*/*/*.db
+  /home/pi/teensy_appliance/teensy_stats.db
 do
   check_sqlite_db "$db"
 done
 
-echo "[ CRON ]"
-crontab -l 2>/dev/null || yellow "No crontab for pi"
-echo
-
-echo "[ KNOWN ISSUES ]"
-echo "- Occasional SQLite 'database is locked (5)' during report generation; email still succeeds"
-echo "- teensy_logger.out may show an older last phase line even while timing.db is still updating"
-echo
-
 echo "[ WORKFLOW ]"
 echo "Refresh snapshot locally:"
-echo "  ~/time-server/rebuild/dump_state.sh > ~/time-server/STATE_SNAPSHOT.txt"
+echo "  ~/time-server/rebuild/dump_state.sh > ~/time-server/system_config/STATE_SNAPSHOT.txt"
 echo
 echo "Commit and push with fresh snapshot:"
 echo "  ~/time-server/rebuild/commit_with_snapshot.sh \"commit message\""
@@ -252,10 +208,6 @@ echo "[ GIT ]"
 cd ~/time-server 2>/dev/null || exit 1
 git log --oneline -n 5 || true
 git status --short || true
-echo
-
-echo "[ REPOSITORY TREE ]"
-tree -L 3 ~/time-server 2>/dev/null || find ~/time-server -maxdepth 3 | sort
 echo
 
 echo "===================================================="
