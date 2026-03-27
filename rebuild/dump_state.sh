@@ -163,7 +163,6 @@ if [ -f /home/pi/timing/teensy_logger.out ]; then
 else
   yellow "Missing /home/pi/timing/teensy_logger.out"
 fi
-
 echo
 
 echo "[ DATABASE ]"
