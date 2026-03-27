@@ -1,5 +1,5 @@
 ================ TIME SERVER STATUS ================
-Generated: 2026-03-27T16:07:39-04:00
+Generated: 2026-03-27T16:16:44-04:00
 
 [ SYSTEM ROLE ]
 Phase: Phase 1
@@ -67,7 +67,7 @@ OK    NTP port 123 listening
 OK    PPS selected by chrony
 Reference ID : 50505300 (PPS)
 Stratum      : 1
-System time  : 0.000000007 seconds fast of NTP time
+System time  : 0.000000015 seconds fast of NTP time
 Last offset  : -0.000000133 seconds
 RMS offset   : 0.000122335 seconds
 Frequency    : 5.488 ppm fast
@@ -92,21 +92,21 @@ OK    PPS device(s): /dev/pps0 /dev/pps1
 [ TIMING QUALITY ]
 Latest logger line:
 2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
-aggregate.log age : 459s
-plot.log age      : 153s
-piksi_monitor age : 2s
+aggregate.log age : 403s
+plot.log age      : 697s
+piksi_monitor age : 1s
 
 [ DATABASE ]
-WARN  timing.db (102M, updated 459s ago)
+WARN  timing.db (102M, updated 1003s ago)
   Path         : /home/pi/timing/timing.db
   Last updated : 2026-03-27 16:00:01
   Integrity    : OK
   Tables       : piksi_events sqlite_sequence teensy_telemetry timing_10min timing_data 
   Row count [timing_10min] : 1432
 
-OK    teensy_stats.db (50M, updated 11s ago)
+OK    teensy_stats.db (50M, updated 21s ago)
   Path         : /home/pi/teensy_appliance/teensy_stats.db
-  Last updated : 2026-03-27 16:07:29
+  Last updated : 2026-03-27 16:16:23
   Integrity    : OK
   Tables       : latest_state samples sqlite_sequence 
 
@@ -135,12 +135,12 @@ Full rebuild path:
   ~/time-server/rebuild/rebuild_all.sh
 
 [ GIT ]
+7692ded Add system state snapshot after USB architecture stabilization
 fca7836 Add system configuration: zed splitter service, gpsd-direct, ser2net config, gpsd config, and splitter script for stable USB GNSS architecture
 1624d60 Phase 2: ZED-F9T integration, timing mode configured, PPS validated
 189a5f0 Ignore generated version files to prevent dirty repo state
 0eaf51e Fix report email script version variable handling
-bf73cd9 Add Teensy telemetry version fields and update dashboard/report version tracking
-?? system_config/STATE_SNAPSHOT.txt
+ M system_config/STATE_SNAPSHOT.txt
 
 [ REPOSITORY TREE ]
 /home/pi/time-server
