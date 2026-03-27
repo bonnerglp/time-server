@@ -1,0 +1,8 @@
+connection: &zedf9t
+  accepter: tcp,0.0.0.0,4001
+  connector: serialdev,/tmp/zed_ucenter,115200n81,local
+  enable: on
+  options:
+    kickolduser: true
+    telnet-brk-on-sync: false
+

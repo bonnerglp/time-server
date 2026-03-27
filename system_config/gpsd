@@ -1,0 +1,11 @@
+# Devices gpsd should collect to at boot time.
+DEVICES="/tmp/zed_gpsd"
+
+# Other options you want to pass to gpsd
+GPSD_OPTIONS="-n"
+
+# Automatically hot add/remove USB GPS devices via gpsdctl
+USBAUTO="false"
+
+# Ensure gpsd starts as a daemon
+START_DAEMON="true"

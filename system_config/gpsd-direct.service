@@ -1,0 +1,13 @@
+[Unit]
+Description=GPSD direct for ZED-F9T split port
+After=zed-splitter.service
+Requires=zed-splitter.service
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/gpsd -N -n /tmp/zed_gpsd
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

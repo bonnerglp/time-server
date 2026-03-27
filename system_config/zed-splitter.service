@@ -1,0 +1,13 @@
+[Unit]
+Description=ZED-F9T serial splitter
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/zed_splitter.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
