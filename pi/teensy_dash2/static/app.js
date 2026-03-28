@@ -12,18 +12,18 @@ const gnssCanvas = document.getElementById("gnssChart");
 const histCanvas = document.getElementById("histChart");
 const allanCanvas = document.getElementById("allanChart");
 
-function makeCard(label, value, cls="") {
+function makeCard(label, value, cls = "") {
   return `<div class="card"><div class="label">${label}</div><div class="value ${cls}">${value ?? ""}</div></div>`;
 }
 
-function fmt(value, digits=2) {
-  if (value === null || value === undefined) return "";
+function fmt(value, digits = 2) {
+  if (value === null || value === undefined || value === "") return "";
   if (typeof value === "number" && isFinite(value)) return value.toFixed(digits);
   return value;
 }
 
-function fmtSci(value, digits=3) {
-  if (value === null || value === undefined) return "";
+function fmtSci(value, digits = 3) {
+  if (value === null || value === undefined || value === "") return "";
   if (typeof value === "number" && isFinite(value)) return value.toExponential(digits);
   return value;
 }
@@ -39,10 +39,9 @@ function fmtAxisTime(ts) {
   return `${mm}-${dd} ${hh}:${mi}`;
 }
 
-
 function demeanSeries(items, key) {
   const vals = items.map(x => x[key]).filter(v => v !== null && isFinite(v));
-  if (!vals.length) return items.map(_ => null);
+  if (!vals.length) return items.map(() => null);
   const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
   return items.map(x => {
     const v = x[key];
@@ -50,14 +49,14 @@ function demeanSeries(items, key) {
   });
 }
 
-function drawSeries(canvas, seriesList, labels=null) {
+function drawSeries(canvas, seriesList, labels = null) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width, h = canvas.height;
   const padL = 55, padR = 20, padT = 20, padB = 40;
 
-  ctx.clearRect(0,0,w,h);
+  ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = "#1b1b1b";
-  ctx.fillRect(0,0,w,h);
+  ctx.fillRect(0, 0, w, h);
   ctx.font = "12px sans-serif";
 
   const vals = [];
@@ -66,6 +65,7 @@ function drawSeries(canvas, seriesList, labels=null) {
       if (v !== null && isFinite(v)) vals.push(v);
     }
   }
+
   if (!vals.length) {
     ctx.fillStyle = "#aaa";
     ctx.fillText("No data", 20, 20);
@@ -73,12 +73,14 @@ function drawSeries(canvas, seriesList, labels=null) {
   }
 
   let ymin = Math.min(...vals), ymax = Math.max(...vals);
-  if (ymin === ymax) { ymin -= 1; ymax += 1; }
+  if (ymin === ymax) {
+    ymin -= 1;
+    ymax += 1;
+  }
 
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
 
-  // axes
   ctx.strokeStyle = "#555";
   ctx.beginPath();
   ctx.moveTo(padL, padT);
@@ -86,7 +88,6 @@ function drawSeries(canvas, seriesList, labels=null) {
   ctx.lineTo(w - padR, h - padB);
   ctx.stroke();
 
-  // y labels
   ctx.fillStyle = "#aaa";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
@@ -94,7 +95,6 @@ function drawSeries(canvas, seriesList, labels=null) {
   ctx.textBaseline = "bottom";
   ctx.fillText(ymin.toFixed(2), 5, h - padB + 2);
 
-  // x-axis date/time ticks
   if (labels && labels.length > 1) {
     const tickCount = Math.min(6, labels.length);
     ctx.strokeStyle = "#333";
@@ -120,20 +120,26 @@ function drawSeries(canvas, seriesList, labels=null) {
     }
   }
 
-  const colors = ["#4ea1ff","#6ee7a8","#ffb86b","#ff7b7b","#d19cff","#72e3d2"];
+  const colors = ["#4ea1ff", "#6ee7a8", "#ffb86b", "#ff7b7b", "#d19cff", "#72e3d2"];
 
   seriesList.forEach((s, idx) => {
     const c = colors[idx % colors.length];
     ctx.strokeStyle = c;
     ctx.beginPath();
     let started = false;
+
     s.values.forEach((v, i) => {
       if (v === null || !isFinite(v)) return;
       const x = padL + i * plotW / Math.max(s.values.length - 1, 1);
       const y = padT + (ymax - v) * plotH / (ymax - ymin);
-      if (!started) { ctx.moveTo(x, y); started = true; }
-      else ctx.lineTo(x, y);
+      if (!started) {
+        ctx.moveTo(x, y);
+        started = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
     });
+
     ctx.stroke();
     ctx.fillStyle = c;
     ctx.textAlign = "left";
@@ -146,9 +152,10 @@ function drawBars(canvas, centers, counts, label) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width, h = canvas.height;
   const pad = 45;
-  ctx.clearRect(0,0,w,h);
+
+  ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = "#1b1b1b";
-  ctx.fillRect(0,0,w,h);
+  ctx.fillRect(0, 0, w, h);
 
   if (!centers.length || !counts.length) {
     ctx.fillStyle = "#aaa";
@@ -163,12 +170,13 @@ function drawBars(canvas, centers, counts, label) {
   ctx.strokeStyle = "#555";
   ctx.beginPath();
   ctx.moveTo(pad, 15);
-  ctx.lineTo(pad, h-pad);
-  ctx.lineTo(w-15, h-pad);
+  ctx.lineTo(pad, h - pad);
+  ctx.lineTo(w - 15, h - pad);
   ctx.stroke();
 
   const bw = (w - pad - 20) / centers.length;
   ctx.fillStyle = "#6ee7a8";
+
   counts.forEach((c, i) => {
     const bh = c * (h - pad - 25) / ymax;
     const x = pad + i * bw;
@@ -185,9 +193,10 @@ function drawAllan(canvas, rows) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width, h = canvas.height;
   const pad = 55;
-  ctx.clearRect(0,0,w,h);
+
+  ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = "#1b1b1b";
-  ctx.fillRect(0,0,w,h);
+  ctx.fillRect(0, 0, w, h);
 
   if (!rows.length) {
     ctx.fillStyle = "#aaa";
@@ -203,17 +212,20 @@ function drawAllan(canvas, rows) {
   ctx.strokeStyle = "#555";
   ctx.beginPath();
   ctx.moveTo(pad, 20);
-  ctx.lineTo(pad, h-pad);
-  ctx.lineTo(w-20, h-pad);
+  ctx.lineTo(pad, h - pad);
+  ctx.lineTo(w - 20, h - pad);
   ctx.stroke();
 
   ctx.strokeStyle = "#6ee7a8";
   ctx.beginPath();
+
   rows.forEach((r, i) => {
     const x = pad + (Math.log10(r.tau_s) - xmin) * (w - pad - 30) / Math.max(xmax - xmin, 1e-9);
     const y = 20 + (ymax - Math.log10(r.adev)) * (h - pad - 30) / Math.max(ymax - ymin, 1e-9);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
   });
+
   ctx.stroke();
 
   ctx.fillStyle = "#aaa";
@@ -234,7 +246,7 @@ function filteredHistory(history) {
 }
 
 async function refresh() {
-  const [latest, history, allan, raw, hist, freq, hold, live, zed] = await Promise.all([
+  const [latest, history, allan, raw, hist, freq, hold, live] = await Promise.all([
     fetch("/api/latest").then(r => r.json()),
     fetch("/api/history").then(r => r.json()),
     fetch("/api/allan").then(r => r.json()),
@@ -243,9 +255,7 @@ async function refresh() {
     fetch("/api/frequency").then(r => r.json()),
     fetch("/api/holdover").then(r => r.json()),
     fetch("/api/live_stats").then(r => r.json()),
-    fetch("/api/zed_status").then(r => r.json()),
   ]);
-  console.log("ZED:", zed);
 
   const statusClass = latest.online ? "ok" : "bad";
 
@@ -255,8 +265,10 @@ async function refresh() {
     makeCard("UTC", latest.utc) +
     makeCard("UTC ns", latest.utc_ns) +
     makeCard("UTC flags", latest.utc_flags) +
+
     makeCard("PPS", latest.pps) +
     makeCard("PPS OK", latest.pps_ok) +
+    makeCard("ZED OK", latest.zed_ok) +
     makeCard("TCP OK", latest.tcp_ok) +
     makeCard("UTC OK", latest.utc_ok) +
     makeCard("GPS OK", latest.gps_ok) +
@@ -264,23 +276,44 @@ async function refresh() {
     makeCard("GPS week", latest.gps_week) +
     makeCard("GPS TOW ms", latest.gps_tow_ms) +
     makeCard("GPS ns residual", latest.gps_ns_res) +
+
     makeCard("Current phase err ns", fmt(live.current_phase_err_ns, 0)) +
     makeCard("60s RMS jitter ns", fmt(live.rms_60s_ns, 2)) +
     makeCard("10m RMS jitter ns", fmt(live.rms_10m_ns, 2)) +
     makeCard("60s peak-peak ns", fmt(live.p2p_60s_ns, 2)) +
     makeCard("ADEV @ 1s", fmtSci(live.adev_1s, 3)) +
-    makeCard("Period ns", latest.period_ns) +
-    makeCard("Err ns", latest.err_ns) +
-    makeCard("RMS ns", latest.rms_ns) +
-    makeCard("Min err ns", latest.min_err_ns) +
-    makeCard("Max err ns", latest.max_err_ns) +
+    makeCard("Period ns", fmt(latest.period_ns, 0)) +
+    makeCard("Err ns", fmt(latest.err_ns, 0)) +
+    makeCard("RMS ns", fmt(latest.rms_ns, 2)) +
+    makeCard("Min err ns", fmt(latest.min_err_ns, 0)) +
+    makeCard("Max err ns", fmt(latest.max_err_ns, 0)) +
+
+    makeCard("Piksi-ZED ns", fmt(latest.piksi_minus_zed_ns, 0)) +
+    makeCard("Piksi-ZED RMS ns", fmt(latest.piksi_minus_zed_rms_ns, 2)) +
+    makeCard("Piksi-ZED min ns", fmt(latest.piksi_minus_zed_min_ns, 0)) +
+    makeCard("Piksi-ZED max ns", fmt(latest.piksi_minus_zed_max_ns, 0)) +
+    makeCard("Valid PPS samples", latest.piksi_minus_zed_valid) +
+    makeCard("Rejected PPS", latest.piksi_minus_zed_rejected) +
+
+    makeCard("Sats Used", latest.sats) +
+    makeCard("Sats Visible", latest.sats_visible) +
+    makeCard("Fix Type", latest.fix_type) +
+    makeCard("PDOP", fmt(latest.pdop, 2)) +
+    makeCard("HDOP", fmt(latest.hdop, 2)) +
+    makeCard("VDOP", fmt(latest.vdop, 2)) +
+    makeCard("C/N0 avg", fmt(latest.cn0_avg, 2)) +
+    makeCard("C/N0 max", fmt(latest.cn0_max, 2)) +
+    makeCard("GPS", latest.gps_count) +
+    makeCard("GAL", latest.gal_count) +
+    makeCard("GLO", latest.glo_count) +
+    makeCard("BDS", latest.bds_count) +
+    makeCard("QZSS", latest.qzss_count) +
+    makeCard("ZED status", latest.zed_status) +
+
     makeCard("TCP bytes", latest.tcp_bytes) +
     makeCard("SBP frames", latest.sbp_frames) +
     makeCard("CRC err", latest.crc_err) +
-    makeCard("Sats", latest.sats) +
-    makeCard("PDOP", latest.pdop) +
-    makeCard("C/N0 avg", latest.cn0_avg) +
-    makeCard("Fix type", latest.fix_type) +
+
     makeCard("FE mode", latest.fe_mode) +
     makeCard("FE control", latest.fe_control) +
     makeCard("FE phase ns", latest.fe_phase_ns) +
@@ -296,42 +329,42 @@ async function refresh() {
   const err600Hist = histFiltered.slice(-600);
 
   drawSeries(timingCanvas, [
-    {name: "err_ns", values: history.map(x => x.err_ns)},
-    {name: "period_ns", values: history.map(x => x.period_ns)}
+    { name: "err_ns", values: history.map(x => x.err_ns) },
+    { name: "period_ns", values: history.map(x => x.period_ns) }
   ], history.map(x => x.timestamp_utc));
 
   drawSeries(phaseTrendCanvas, [
-    {name: "phase_err_ns", values: histFiltered.map(x => x.err_ns)}
+    { name: "phase_err_ns", values: histFiltered.map(x => x.err_ns) }
   ], histFiltered.map(x => x.timestamp_utc));
 
   drawSeries(jitter60Canvas, [
-    {name: "60s_jitter_ns", values: demeanSeries(err60Hist, "err_ns")}
+    { name: "60s_jitter_ns", values: demeanSeries(err60Hist, "err_ns") }
   ], err60Hist.map(x => x.timestamp_utc));
 
   drawSeries(jitter600Canvas, [
-    {name: "10m_jitter_ns", values: demeanSeries(err600Hist, "err_ns")}
+    { name: "10m_jitter_ns", values: demeanSeries(err600Hist, "err_ns") }
   ], err600Hist.map(x => x.timestamp_utc));
 
   drawSeries(ppsNoiseCanvas, [
-    {name: "gps_pps_noise_ns", values: histFiltered.map(x => x.err_ns)}
+    { name: "gps_pps_noise_ns", values: histFiltered.map(x => x.err_ns) }
   ], histFiltered.map(x => x.timestamp_utc));
 
   drawSeries(freqCanvas, [
-    {name: "freq_ppb", values: freq}
+    { name: "freq_ppb", values: freq }
   ]);
 
   drawSeries(trafficCanvas, [
-    {name: "tcp_bytes", values: history.map(x => x.tcp_bytes)},
-    {name: "sbp_frames", values: history.map(x => x.sbp_frames)},
-    {name: "crc_err", values: history.map(x => x.crc_err)}
+    { name: "tcp_bytes", values: history.map(x => x.tcp_bytes) },
+    { name: "sbp_frames", values: history.map(x => x.sbp_frames) },
+    { name: "crc_err", values: history.map(x => x.crc_err) }
   ], history.map(x => x.timestamp_utc));
 
   drawSeries(gnssCanvas, [
-    {name: "sats", values: history.map(x => x.sats)},
-    {name: "pdop", values: history.map(x => x.pdop)},
-    {name: "cn0_avg", values: history.map(x => x.cn0_avg)},
-    {name: "gps_ns_res", values: history.map(x => x.gps_ns_res)},
-    {name: "utc_ns", values: history.map(x => x.utc_ns)}
+    { name: "sats_used", values: history.map(x => x.sats) },
+    { name: "sats_visible", values: history.map(x => x.sats_visible) },
+    { name: "pdop", values: history.map(x => x.pdop) },
+    { name: "cn0_avg", values: history.map(x => x.cn0_avg) },
+    { name: "piksi_minus_zed_ns", values: history.map(x => x.piksi_minus_zed_ns) }
   ], history.map(x => x.timestamp_utc));
 
   drawBars(histCanvas, hist.centers || [], hist.counts || [], "err_ns");
