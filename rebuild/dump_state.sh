@@ -225,6 +225,57 @@ fi
 
 echo
 
+echo "[ ZED TO TEENSY BRIDGE ]"
+if systemctl is-active --quiet zed-to-teensy.service; then
+  echo "OK    zed-to-teensy.service running"
+else
+  echo "WARN  zed-to-teensy.service not running"
+fi
+
+if [ -f /home/pi/teensy_appliance/teensy_stats.db ]; then
+  echo "Latest bridge/comparison state:"
+  python3 - <<'PY3'
+import sqlite3
+
+db = "/home/pi/teensy_appliance/teensy_stats.db"
+conn = sqlite3.connect(db)
+conn.row_factory = sqlite3.Row
+
+try:
+    row = conn.execute("""
+        SELECT sats, sats_visible, fix_type,
+               pdop, cn0_avg,
+               gps_count, gal_count, glo_count, bds_count, qzss_count,
+               piksi_minus_zed_ns, piksi_minus_zed_rms_ns
+        FROM latest_state
+        WHERE singleton_id = 1
+    """).fetchone()
+
+    if row:
+        d = dict(row)
+        print(
+            f"  sats={d.get('sats')} visible={d.get('sats_visible')} "
+            f"fix={d.get('fix_type')} pdop={d.get('pdop')} cn0={d.get('cn0_avg')}"
+        )
+        print(
+            f"  gps={d.get('gps_count')} gal={d.get('gal_count')} "
+            f"glo={d.get('glo_count')} bds={d.get('bds_count')} qzss={d.get('qzss_count')}"
+        )
+        print(
+            f"  piksi_minus_zed_ns={d.get('piksi_minus_zed_ns')} "
+            f"rms_ns={d.get('piksi_minus_zed_rms_ns')}"
+        )
+    else:
+        print("  WARN  latest_state row missing")
+finally:
+    conn.close()
+PY3
+else
+  echo "WARN  /home/pi/teensy_appliance/teensy_stats.db missing"
+fi
+
+echo
+
 echo "[ GIT ]"
 cd ~/time-server 2>/dev/null || exit 1
 git log --oneline -n 5 || true

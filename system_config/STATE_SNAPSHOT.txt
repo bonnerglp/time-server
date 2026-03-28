@@ -1,5 +1,5 @@
 ================ TIME SERVER STATUS ================
-Generated: 2026-03-28T17:12:52-04:00
+Generated: 2026-03-28T19:40:55-04:00
 
 [ SYSTEM ROLE ]
 Phase: Phase 1
@@ -73,11 +73,11 @@ OK    NTP port 123 listening
 WARN  PPS not currently selected by chrony
 Reference ID : 5DF387EF (unifi.versadns.com)
 Stratum      : 3
-System time  : 0.001402580 seconds slow of NTP time
-Last offset  : -0.000365574 seconds
-RMS offset   : 0.000816807 seconds
-Frequency    : 6.217 ppm fast
-Skew         : 0.206 ppm
+System time  : 0.000408298 seconds slow of NTP time
+Last offset  : +0.000201721 seconds
+RMS offset   : 0.000567675 seconds
+Frequency    : 6.147 ppm fast
+Skew         : 0.170 ppm
 Leap status  : Normal
 
 [ PPS SOURCE DETAIL ]
@@ -101,13 +101,13 @@ Latest logger line:
 2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
 
 [ DATABASE ]
-OK    timing.db (104M, updated 142s ago)
+OK    timing.db (104M, updated 0s ago)
   Path         : /home/pi/timing/timing.db
-  Last updated : 2026-03-28 17:10:30
+  Last updated : 2026-03-28 19:40:55
 
-OK    teensy_stats.db (50M, updated 161s ago)
+OK    teensy_stats.db (50M, updated 87s ago)
   Path         : /home/pi/teensy_appliance/teensy_stats.db
-  Last updated : 2026-03-28 17:10:11
+  Last updated : 2026-03-28 19:39:28
 
 [ WORKFLOW ]
 Refresh snapshot locally:
@@ -122,28 +122,23 @@ Full rebuild path:
 [ ZED MONITOR ]
 OK    zed-monitor.service running
 Latest ZED status:
-  ts=2026-03-28T21:12:46.098279+00:00 fix=3D used=22 visible=35 pdop=1.1 avg_cn0=28.371
+  ts=2026-03-28T23:40:46.084512+00:00 fix=3D used=26 visible=35 pdop=0.91 avg_cn0=27.486
+
+[ ZED TO TEENSY BRIDGE ]
+OK    zed-to-teensy.service running
+Latest bridge/comparison state:
+  sats=26 visible=35 fix=3D pdop=0.91 cn0=27.49
+  gps=12 gal=12 glo=5 bds=0 qzss=0
+  piksi_minus_zed_ns=461.0 rms_ns=36.21
 
 [ GIT ]
+0e55704 Phase 2: ZED telemetry bridge, collector schema update, and dashboard integration
+155e2ae Phase 2: ZED full integration with Teensy bridge and PPS comparison
 2bfed19 Sync root snapshot with updated ZED-F9T architecture
 9f5e35a Update snapshot generator to ZED-F9T USB splitter architecture
 79a4fcb Update snapshot generator to ZED-F9T USB splitter architecture
-5ea6b8e Update snapshot: migrated from Piksi to ZED-F9T, added USB splitter architecture, gpsd-direct and ser2net integration
-7692ded Add system state snapshot after USB architecture stabilization
- M pi/teensy_appliance/collector.py
- M pi/teensy_dash2/app.py
- M pi/teensy_dash2/static/app.js
- M pi/teensy_dash2/templates/index.html
  M rebuild/dump_state.sh
  M system_config/STATE_SNAPSHOT.txt
-?? dump_state.txt
-?? monitoring/
-?? pi/send_zed_to_teensy.py
-?? rebuild/dump_state.sh.save
-?? rebuild/dump_state.sh.save.1
-?? rebuild/install_zed_monitor.sh
-?? systemd/
-?? zed_monitor_one_shot_installer.sh
 
 ====================================================
 OK    OVERALL: PASS
