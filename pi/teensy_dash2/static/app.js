@@ -234,7 +234,7 @@ function filteredHistory(history) {
 }
 
 async function refresh() {
-  const [latest, history, allan, raw, hist, freq, hold, live] = await Promise.all([
+  const [latest, history, allan, raw, hist, freq, hold, live, zed] = await Promise.all([
     fetch("/api/latest").then(r => r.json()),
     fetch("/api/history").then(r => r.json()),
     fetch("/api/allan").then(r => r.json()),
@@ -243,7 +243,9 @@ async function refresh() {
     fetch("/api/frequency").then(r => r.json()),
     fetch("/api/holdover").then(r => r.json()),
     fetch("/api/live_stats").then(r => r.json()),
+    fetch("/api/zed_status").then(r => r.json()),
   ]);
+  console.log("ZED:", zed);
 
   const statusClass = latest.online ? "ok" : "bad";
 

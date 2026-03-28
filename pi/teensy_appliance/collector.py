@@ -8,7 +8,6 @@ if REPO_ROOT not in sys.path:
 from pi.utils.version import get_version
 REPO_VERSION = get_version()
 
-# VERSION_HELPER_AVAILABLE
 import os
 import socket
 import sqlite3
@@ -22,31 +21,57 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS samples (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp_utc TEXT NOT NULL,
+    repo_version TEXT,
+
     pps INTEGER,
     state TEXT,
     pps_ok INTEGER,
+    zed_ok INTEGER,
     tcp_ok INTEGER,
     utc_ok INTEGER,
     gps_ok INTEGER,
     tracking INTEGER,
+
     period_ns REAL,
     err_ns REAL,
     rms_ns REAL,
     min_err_ns REAL,
     max_err_ns REAL,
+
     tcp_bytes INTEGER,
     sbp_frames INTEGER,
     crc_err INTEGER,
+
     gps_week INTEGER,
     gps_tow_ms INTEGER,
     gps_ns_res REAL,
     utc TEXT,
     utc_ns INTEGER,
     utc_flags TEXT,
+
     sats INTEGER,
+    sats_visible INTEGER,
     pdop REAL,
+    hdop REAL,
+    vdop REAL,
     cn0_avg REAL,
+    cn0_max REAL,
     fix_type TEXT,
+
+    gps_count INTEGER,
+    gal_count INTEGER,
+    glo_count INTEGER,
+    bds_count INTEGER,
+    qzss_count INTEGER,
+    zed_status TEXT,
+
+    piksi_minus_zed_ns REAL,
+    piksi_minus_zed_rms_ns REAL,
+    piksi_minus_zed_valid INTEGER,
+    piksi_minus_zed_rejected INTEGER,
+    piksi_minus_zed_min_ns REAL,
+    piksi_minus_zed_max_ns REAL,
+
     fe_mode TEXT,
     fe_control REAL,
     fe_phase_ns REAL,
@@ -60,31 +85,57 @@ LATEST_SCHEMA = """
 CREATE TABLE IF NOT EXISTS latest_state (
     singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
     timestamp_utc TEXT NOT NULL,
+    repo_version TEXT,
+
     pps INTEGER,
     state TEXT,
     pps_ok INTEGER,
+    zed_ok INTEGER,
     tcp_ok INTEGER,
     utc_ok INTEGER,
     gps_ok INTEGER,
     tracking INTEGER,
+
     period_ns REAL,
     err_ns REAL,
     rms_ns REAL,
     min_err_ns REAL,
     max_err_ns REAL,
+
     tcp_bytes INTEGER,
     sbp_frames INTEGER,
     crc_err INTEGER,
+
     gps_week INTEGER,
     gps_tow_ms INTEGER,
     gps_ns_res REAL,
     utc TEXT,
     utc_ns INTEGER,
     utc_flags TEXT,
+
     sats INTEGER,
+    sats_visible INTEGER,
     pdop REAL,
+    hdop REAL,
+    vdop REAL,
     cn0_avg REAL,
+    cn0_max REAL,
     fix_type TEXT,
+
+    gps_count INTEGER,
+    gal_count INTEGER,
+    glo_count INTEGER,
+    bds_count INTEGER,
+    qzss_count INTEGER,
+    zed_status TEXT,
+
+    piksi_minus_zed_ns REAL,
+    piksi_minus_zed_rms_ns REAL,
+    piksi_minus_zed_valid INTEGER,
+    piksi_minus_zed_rejected INTEGER,
+    piksi_minus_zed_min_ns REAL,
+    piksi_minus_zed_max_ns REAL,
+
     fe_mode TEXT,
     fe_control REAL,
     fe_phase_ns REAL,
@@ -93,18 +144,42 @@ CREATE TABLE IF NOT EXISTS latest_state (
 """
 
 FIELDS = [
-    "pps", "state", "pps_ok", "tcp_ok", "utc_ok", "gps_ok", "tracking",
+    "pps", "state", "pps_ok", "zed_ok", "tcp_ok", "utc_ok", "gps_ok", "tracking",
     "period_ns", "err_ns", "rms_ns", "min_err_ns", "max_err_ns",
     "tcp_bytes", "sbp_frames", "crc_err",
     "gps_week", "gps_tow_ms", "gps_ns_res",
     "utc", "utc_ns", "utc_flags",
-    "sats", "pdop", "cn0_avg", "fix_type",
-    "fe_mode", "fe_control", "fe_phase_ns", "fe_holdover"
+    "sats", "sats_visible", "pdop", "hdop", "vdop", "cn0_avg", "cn0_max", "fix_type",
+    "gps_count", "gal_count", "glo_count", "bds_count", "qzss_count", "zed_status",
+    "piksi_minus_zed_ns", "piksi_minus_zed_rms_ns", "piksi_minus_zed_valid",
+    "piksi_minus_zed_rejected", "piksi_minus_zed_min_ns", "piksi_minus_zed_max_ns",
+    "fe_mode", "fe_control", "fe_phase_ns", "fe_holdover",
 ]
 
 MAX_ABS_ERR_NS = 100000          # 100 us
 MIN_PERIOD_NS = 900_000_000
 MAX_PERIOD_NS = 1_100_000_000
+
+MIGRATION_COLUMNS = {
+    "repo_version": "TEXT",
+    "zed_ok": "INTEGER",
+    "sats_visible": "INTEGER",
+    "hdop": "REAL",
+    "vdop": "REAL",
+    "cn0_max": "REAL",
+    "gps_count": "INTEGER",
+    "gal_count": "INTEGER",
+    "glo_count": "INTEGER",
+    "bds_count": "INTEGER",
+    "qzss_count": "INTEGER",
+    "zed_status": "TEXT",
+    "piksi_minus_zed_ns": "REAL",
+    "piksi_minus_zed_rms_ns": "REAL",
+    "piksi_minus_zed_valid": "INTEGER",
+    "piksi_minus_zed_rejected": "INTEGER",
+    "piksi_minus_zed_min_ns": "REAL",
+    "piksi_minus_zed_max_ns": "REAL",
+}
 
 def parse_value(v: str):
     v = v.strip()
@@ -132,9 +207,8 @@ def sample_is_reasonable(sample: dict):
     err_ns = sample.get("err_ns")
     period_ns = sample.get("period_ns")
     tracking = sample.get("tracking")
-    utc_ok = sample.get("utc_ok")
-    gps_ok = sample.get("gps_ok")
     pps_ok = sample.get("pps_ok")
+    zed_ok = sample.get("zed_ok", 1)
 
     try:
         if err_ns is None or abs(float(err_ns)) > MAX_ABS_ERR_NS:
@@ -151,14 +225,24 @@ def sample_is_reasonable(sample: dict):
     except Exception:
         return False
 
-    if tracking in (0, False) or utc_ok in (0, False) or gps_ok in (0, False) or pps_ok in (0, False):
+    if tracking in (0, False) or pps_ok in (0, False) or zed_ok in (0, False):
         return False
 
     return True
 
+def ensure_columns(conn: sqlite3.Connection, table: str, required: dict):
+    cur = conn.execute(f"PRAGMA table_info({table})")
+    existing = {row[1] for row in cur.fetchall()}
+    for col, coltype in required.items():
+        if col not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {coltype}")
+    conn.commit()
+
 def init_db(conn: sqlite3.Connection):
     conn.executescript(SCHEMA)
     conn.executescript(LATEST_SCHEMA)
+    ensure_columns(conn, "samples", MIGRATION_COLUMNS)
+    ensure_columns(conn, "latest_state", MIGRATION_COLUMNS)
     conn.commit()
 
 def insert_sample(conn: sqlite3.Connection, sample: dict):
@@ -186,7 +270,7 @@ def insert_sample(conn: sqlite3.Connection, sample: dict):
         INSERT INTO latest_state ({', '.join(latest_cols)})
         VALUES ({latest_placeholders})
         ON CONFLICT(singleton_id) DO UPDATE SET
-        {', '.join(f"{c}=excluded.{c}" for c in ['timestamp_utc'] + FIELDS)}
+        {', '.join(f"{c}=excluded.{c}" for c in ['timestamp_utc'] + FIELDS + ['repo_version'])}
         """,
         latest_vals,
     )

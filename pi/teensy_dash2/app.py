@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+import json
 
 REPO_ROOT = "/home/pi/time-server"
 if REPO_ROOT not in sys.path:
@@ -239,9 +240,18 @@ def live_stats():
         "samples_10m": len(vals_600),
     }
 
+def get_zed_status():
+    path = "/home/pi/timing/zed_status.json"
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    zed = get_zed_status()
+    return render_template("index.html", zed=zed)
 
 @app.route("/api/latest")
 def api_latest():
@@ -280,6 +290,14 @@ def api_live_stats():
 def api_raw_latest():
     pkt = latest_packet()
     return jsonify({"packet": pkt, "raw": pkt})
+
+@app.route("/api/zed_status")
+def api_zed_status():
+    zed = get_zed_status()
+    if zed is None:
+        return jsonify({"ok": False, "error": "no zed status"})
+    zed["ok"] = True
+    return jsonify(zed)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=HTTP_PORT, debug=False)

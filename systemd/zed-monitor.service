@@ -1,0 +1,20 @@
+[Unit]
+Description=ZED-F9T monitor via gpsd JSON
+After=network-online.target gpsd-direct.service zed-splitter.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/time-server
+Environment=PYTHONUNBUFFERED=1
+Environment=ZED_MONITOR_DB=/home/pi/timing/zed_monitor.db
+Environment=ZED_MONITOR_STATUS=/home/pi/timing/zed_status.json
+Environment=ZED_MONITOR_POLL_SECONDS=10
+ExecStart=/usr/bin/python3 /home/pi/time-server/monitoring/zed_monitor.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

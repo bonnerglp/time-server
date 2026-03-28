@@ -13,6 +13,29 @@
 
   <h1>Teensy Timing Dashboard</h1>
 
+<div style="margin-bottom:20px; padding:10px; border:1px solid #444; border-radius:8px;">
+  <h2>ZED GNSS Status</h2>
+
+  {% if zed %}
+  <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px;">
+    <div>Fix: {{ zed.fix_type }}</div>
+    <div>Sats Used: {{ zed.sats_used }}</div>
+    <div>Sats Visible: {{ zed.sats_visible }}</div>
+    <div>PDOP: {{ zed.pdop }}</div>
+    <div>Avg C/N0: {{ zed.avg_cn0 }}</div>
+    <div>Max C/N0: {{ zed.max_cn0 }}</div>
+    <div>GPS: {{ zed.gps_count }}</div>
+    <div>GAL: {{ zed.gal_count }}</div>
+    <div>GLO: {{ zed.glo_count }}</div>
+    <div>BDS: {{ zed.bds_count }}</div>
+    <div>QZSS: {{ zed.qzss_count }}</div>
+    <div>Last: {{ zed.ts_utc }}</div>
+  </div>
+  {% else %}
+  <p>No ZED data</p>
+  {% endif %}
+</div>
+
   <div class="grid" id="cards"></div>
 
   <h2>Timing</h2>

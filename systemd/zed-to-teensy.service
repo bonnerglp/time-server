@@ -1,0 +1,15 @@
+[Unit]
+Description=Send ZED telemetry summary to Teensy over UDP
+After=network-online.target zed-monitor.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+ExecStart=/usr/bin/python3 /home/pi/time-server/pi/send_zed_to_teensy.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
