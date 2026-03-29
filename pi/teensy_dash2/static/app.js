@@ -287,7 +287,6 @@ async function refresh() {
     makeCard("Auto-cal state", live.auto_cal_state, autoCalClass) +
     makeCard("Learned cal ns", fmt(live.auto_cal_ns, 0), autoCalClass) +
     makeCard("Calibrated phase ns", fmt(live.auto_calibrated_phase_ns, 0), autoCalClass) +
-    makeCard("Auto-cal RMS ns", fmt(live.auto_cal_rms_ns, 2)) +
     makeCard("Auto-cal samples", live.auto_cal_samples) +
 
     makeCard("60s RMS jitter ns", fmt(live.rms_60s_ns, 2)) +
