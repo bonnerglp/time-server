@@ -452,7 +452,14 @@ function drawPpsCompare(canvas, history) {
   const labels = history.map(x => x.timestamp_utc);
   const vals = history.map(x => {
     const v = x.piksi_minus_zed_ns;
-    return (v !== null && isFinite(v)) ? Number(v) : null;
+    if (v === null || !isFinite(v)) return null;
+    const n = Number(v);
+
+    // Reject impossible/sentinel values that corrupt scaling.
+    // Real Piksi-ZED differences should be in the low-us range or less.
+    if (Math.abs(n) > 10000) return null;
+
+    return n;
   });
 
   const valid = vals.filter(v => v !== null);
@@ -576,7 +583,15 @@ function drawPpsCompare(canvas, history) {
   ctx.fillStyle = "#4ea1ff";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText(`piksi_minus_zed_ns  mean ${mean.toFixed(1)}  min ${Math.min(...valid).toFixed(0)}  max ${Math.max(...valid).toFixed(0)}`, padL + 10, 4);
+  const vmin = Math.min(...valid);
+  const vmax = Math.max(...valid);
+  const rms = Math.sqrt(valid.reduce((s, v) => s + (v - mean) ** 2, 0) / valid.length);
+
+  ctx.fillText(
+    `piksi_minus_zed_ns  mean ${mean.toFixed(1)}  rms ${rms.toFixed(1)}  min ${vmin.toFixed(0)}  max ${vmax.toFixed(0)}`,
+    padL + 10,
+    4
+  );
 }
 
 function filteredHistory(history) {
