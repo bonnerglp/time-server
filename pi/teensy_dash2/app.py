@@ -73,7 +73,31 @@ def recent_history(limit=7200):
         LIMIT ?
     """, (limit,)).fetchall()
     conn.close()
-    return [dict(r) for r in reversed(rows)]
+    return sanitize_history_rows([dict(r) for r in reversed(rows)])
+
+
+def sanitize_piksi_minus_zed_ns(v, abs_limit_ns=10000):
+    if v is None:
+        return None
+    try:
+        x = float(v)
+    except Exception:
+        return None
+
+    # Reject impossible/sentinel values that would corrupt plots/stats.
+    # Real Piksi-ZED PPS deltas should stay in the low-microsecond range or less.
+    if abs(x) > abs_limit_ns:
+        return None
+
+    return x
+
+def sanitize_history_rows(rows):
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["piksi_minus_zed_ns"] = sanitize_piksi_minus_zed_ns(d.get("piksi_minus_zed_ns"))
+        out.append(d)
+    return out
 
 def filtered_err_values(limit=40000, abs_limit_ns=100000):
     rows = recent_history(limit)
