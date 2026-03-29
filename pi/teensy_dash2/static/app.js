@@ -271,10 +271,12 @@ async function refresh() {
     makeCard("PPS", latest.pps) +
     makeCard("PPS OK", latest.pps_ok) +
     makeCard("Calibrated phase err ns", fmt((live.auto_calibrated_phase_ns ?? live.phase_residual_ns), 0), live.auto_cal_valid ? "ok" : "bad") +
+    makeCard("10m RMS jitter ns", fmt(live.rms_10m_ns, 2)) +
     makeCard("Raw phase err ns", fmt(live.current_phase_err_ns, 0)) +
     makeCard("Phase bias ns", fmt((live.phase_bias_ns ?? live.auto_cal_ns), 0), (live.phase_bias_valid || live.auto_cal_valid) ? "ok" : "bad") +
-    makeCard("Bias RMS ns", fmt((live.phase_bias_rms_ns ?? live.auto_cal_rms_ns), 2)) +
     makeCard("Auto-cal state", live.auto_cal_state, autoCalClass) +
+    makeCard("Piksi-ZED RMS ns", fmt(latest.piksi_minus_zed_rms_ns, 2)) +
+    makeCard("Bias RMS ns", fmt((live.phase_bias_rms_ns ?? live.auto_cal_rms_ns), 2)) +
     makeCard("Auto-cal samples", live.auto_cal_samples) +
     makeCard("ZED OK", latest.zed_ok) +
     makeCard("TCP OK", latest.tcp_ok) +
@@ -288,7 +290,6 @@ async function refresh() {
 
 
     makeCard("60s RMS jitter ns", fmt(live.rms_60s_ns, 2)) +
-    makeCard("10m RMS jitter ns", fmt(live.rms_10m_ns, 2)) +
     makeCard("60s peak-peak ns", fmt(live.p2p_60s_ns, 2)) +
     makeCard("ADEV @ 1s", fmtSci(live.adev_1s, 3)) +
     makeCard("Period ns", fmt(latest.period_ns, 0)) +
@@ -298,7 +299,6 @@ async function refresh() {
     makeCard("Max err ns", fmt(latest.max_err_ns, 0)) +
 
     makeCard("Piksi-ZED ns", fmt(latest.piksi_minus_zed_ns, 0)) +
-    makeCard("Piksi-ZED RMS ns", fmt(latest.piksi_minus_zed_rms_ns, 2)) +
     makeCard("Piksi-ZED min ns", fmt(latest.piksi_minus_zed_min_ns, 0)) +
     makeCard("Piksi-ZED max ns", fmt(latest.piksi_minus_zed_max_ns, 0)) +
     makeCard("Valid PPS samples", latest.piksi_minus_zed_valid) +
