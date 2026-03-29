@@ -9,7 +9,6 @@ if REPO_ROOT not in sys.path:
 from pi.utils.version import get_version
 REPO_VERSION = get_version()
 
-# VERSION_HELPER_AVAILABLE
 import math
 import os
 import sqlite3
@@ -21,10 +20,13 @@ HTTP_PORT = int(os.environ.get("DASHBOARD_PORT", "8082"))
 
 app = Flask(__name__)
 
+AUTO_CAL_MIN_SAMPLES = 120
+AUTO_CAL_TARGET_WINDOW = 600
+AUTO_CAL_MAX_RMS_NS = 50.0
+
 @app.context_processor
 def inject_repo_version():
     return {"repo_version": REPO_VERSION}
-
 
 def db():
     conn = sqlite3.connect(DB_PATH)
@@ -100,6 +102,64 @@ def peak_to_peak(values):
     if not values:
         return None
     return max(values) - min(values)
+
+def median_of(values):
+    if not values:
+        return None
+    xs = sorted(values)
+    n = len(xs)
+    mid = n // 2
+    if n % 2 == 0:
+        return (xs[mid - 1] + xs[mid]) / 2.0
+    return xs[mid]
+
+def auto_calibration_from_values(values):
+    sample_count = len(values)
+    if sample_count < AUTO_CAL_MIN_SAMPLES:
+        return {
+            "state": "LEARNING",
+            "learned_cal_ns": None,
+            "calibrated_phase_ns": None,
+            "bias_rms_ns": None,
+            "sample_count": sample_count,
+            "valid": False,
+        }
+
+    window_vals = values[-AUTO_CAL_TARGET_WINDOW:] if sample_count > AUTO_CAL_TARGET_WINDOW else values[:]
+    bias = median_of(window_vals)
+
+    if bias is None:
+        return {
+            "state": "LEARNING",
+            "learned_cal_ns": None,
+            "calibrated_phase_ns": None,
+            "bias_rms_ns": None,
+            "sample_count": len(window_vals),
+            "valid": False,
+        }
+
+    diffs = [(x - bias) for x in window_vals]
+    bias_rms = rms_of(diffs)
+    current_phase = values[-1] if values else None
+
+    valid = bias_rms is not None and bias_rms <= AUTO_CAL_MAX_RMS_NS
+    if valid:
+        state = "VALID"
+        calibrated_phase = current_phase - bias if current_phase is not None else None
+        learned_cal = bias
+    else:
+        state = "HOLD"
+        calibrated_phase = None
+        learned_cal = None
+
+    return {
+        "state": state,
+        "learned_cal_ns": learned_cal,
+        "calibrated_phase_ns": calibrated_phase,
+        "bias_rms_ns": bias_rms,
+        "sample_count": len(window_vals),
+        "valid": valid,
+    }
 
 def allan_from_err_ns(err_ns_values):
     xs = []
@@ -233,13 +293,7 @@ def live_stats():
     bias_valid = False
 
     if len(vals_600) >= 120:
-        sorted_vals = sorted(vals_600)
-        mid = len(sorted_vals) // 2
-        if len(sorted_vals) % 2 == 0:
-            bias = (sorted_vals[mid - 1] + sorted_vals[mid]) / 2
-        else:
-            bias = sorted_vals[mid]
-
+        bias = median_of(vals_600)
         diffs = [(x - bias) for x in vals_600]
         bias_rms = rms_of(diffs)
 
@@ -248,6 +302,8 @@ def live_stats():
 
         if bias_rms is not None and bias_rms < 50:
             bias_valid = True
+
+    auto_cal = auto_calibration_from_values(vals)
 
     adev_rows = allan_from_err_ns(vals[-5000:] if vals else [])
     adev_1s = None
@@ -268,6 +324,13 @@ def live_stats():
         "phase_bias_rms_ns": bias_rms,
         "phase_residual_ns": residual,
         "phase_bias_valid": bias_valid,
+
+        "auto_cal_state": auto_cal["state"],
+        "auto_cal_ns": auto_cal["learned_cal_ns"],
+        "auto_calibrated_phase_ns": auto_cal["calibrated_phase_ns"],
+        "auto_cal_rms_ns": auto_cal["bias_rms_ns"],
+        "auto_cal_samples": auto_cal["sample_count"],
+        "auto_cal_valid": auto_cal["valid"],
     }
 
 def get_zed_status():

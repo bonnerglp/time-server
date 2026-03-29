@@ -259,6 +259,7 @@ async function refresh() {
   ]);
 
   const statusClass = latest.online ? "ok" : "bad";
+  const autoCalClass = live.auto_cal_valid ? "ok" : (live.auto_cal_state === "LEARNING" ? "" : "bad");
 
   cardsEl.innerHTML =
     makeCard("Online", latest.online ? "YES" : "NO", statusClass) +
@@ -282,6 +283,13 @@ async function refresh() {
     makeCard("Phase bias ns", fmt(live.phase_bias_ns, 0), live.phase_bias_valid ? "ok" : "bad") +
     makeCard("Bias RMS ns", fmt(live.phase_bias_rms_ns, 2)) +
     makeCard("Residual ns", fmt(live.phase_residual_ns, 0)) +
+
+    makeCard("Auto-cal state", live.auto_cal_state, autoCalClass) +
+    makeCard("Learned cal ns", fmt(live.auto_cal_ns, 0), autoCalClass) +
+    makeCard("Calibrated phase ns", fmt(live.auto_calibrated_phase_ns, 0), autoCalClass) +
+    makeCard("Auto-cal RMS ns", fmt(live.auto_cal_rms_ns, 2)) +
+    makeCard("Auto-cal samples", live.auto_cal_samples) +
+
     makeCard("60s RMS jitter ns", fmt(live.rms_60s_ns, 2)) +
     makeCard("10m RMS jitter ns", fmt(live.rms_10m_ns, 2)) +
     makeCard("60s peak-peak ns", fmt(live.p2p_60s_ns, 2)) +
