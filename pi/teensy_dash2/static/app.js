@@ -1,5 +1,8 @@
 const cardsEl = document.getElementById("cards");
 const rawEl = document.getElementById("raw");
+const narrativePanelEl = document.getElementById("narrativePanel");
+const narrativeStatusEl = document.getElementById("narrativeStatus");
+const narrativeBodyEl = document.getElementById("narrativeBody");
 
 const timingCanvas = document.getElementById("timingChart");
 const phaseTrendCanvas = document.getElementById("phaseTrendChart");
@@ -602,6 +605,137 @@ function filteredHistory(history) {
   );
 }
 
+
+function narrativeLine(label, text) {
+  return `${label}: ${text}`;
+}
+
+function classifyPdop(pdop) {
+  if (pdop === null || pdop === undefined || !isFinite(pdop)) return "unknown";
+  if (pdop <= 1.5) return "good";
+  if (pdop <= 2.5) return "moderate";
+  return "poor";
+}
+
+function classifyJitter(rms10) {
+  if (rms10 === null || rms10 === undefined || !isFinite(rms10)) return "unknown";
+  if (rms10 <= 20) return "excellent";
+  if (rms10 <= 50) return "good";
+  if (rms10 <= 100) return "fair";
+  return "poor";
+}
+
+function classifyPpsRms(rms) {
+  if (rms === null || rms === undefined || !isFinite(rms)) return "unknown";
+  if (rms <= 30) return "tight";
+  if (rms <= 75) return "stable";
+  if (rms <= 150) return "moderate";
+  return "noisy";
+}
+
+function setNarrative(latest, live, hold) {
+  const online = !!latest.online;
+  const tracking = latest.state === "TRACKING";
+  const zedOk = Number(latest.zed_ok) === 1;
+  const ppsOk = Number(latest.pps_ok) === 1;
+  const fix = latest.fix_type || "unknown";
+  const pdop = latest.pdop;
+  const sats = latest.sats;
+  const vis = latest.sats_visible;
+  const calValid = !!live.auto_cal_valid;
+  const calState = live.auto_cal_state || "UNKNOWN";
+  const calibrated = live.auto_calibrated_phase_ns ?? live.phase_residual_ns;
+  const rawPhase = live.current_phase_err_ns;
+  const bias = live.phase_bias_ns ?? live.auto_cal_ns;
+  const biasRms = live.phase_bias_rms_ns ?? live.auto_cal_rms_ns;
+  const rms10 = live.rms_10m_ns;
+  const ppsMean = latest.piksi_minus_zed_ns;
+  const ppsRms = latest.piksi_minus_zed_rms_ns;
+  const holdDrift = hold?.drift_1h_ns;
+
+  let overall = "Healthy";
+  let overallClass = "#6ee7a8";
+
+  if (!online || !tracking || !zedOk || !ppsOk) {
+    overall = "Warning";
+    overallClass = "#ff7b7b";
+  } else if (!calValid || classifyPdop(pdop) === "poor" || classifyJitter(rms10) === "fair" || classifyJitter(rms10) === "poor") {
+    overall = "Caution";
+    overallClass = "#ffb86b";
+  }
+
+  const lines = [];
+
+  lines.push(
+    narrativeLine(
+      "Overall",
+      online && tracking && zedOk && ppsOk
+        ? "Healthy and tracking."
+        : "One or more core status indicators are degraded."
+    )
+  );
+
+  if (calibrated !== null && calibrated !== undefined && isFinite(calibrated)) {
+    lines.push(
+      narrativeLine(
+        "Timing",
+        `Calibrated phase error is ${fmt(calibrated, 0)} ns and 10-minute RMS jitter is ${fmt(rms10, 2)} ns, which is ${classifyJitter(rms10)} for this system.`
+      )
+    );
+  } else {
+    lines.push(
+      narrativeLine(
+        "Timing",
+        `10-minute RMS jitter is ${fmt(rms10, 2)} ns. Corrected phase is not yet available.`
+      )
+    );
+  }
+
+  if (calValid) {
+    lines.push(
+      narrativeLine(
+        "Bias correction",
+        `Auto-cal is ${calState}. Raw phase offset is ${fmt(rawPhase, 0)} ns, learned bias is ${fmt(bias, 0)} ns, and bias RMS is ${fmt(biasRms, 2)} ns.`
+      )
+    );
+  } else {
+    lines.push(
+      narrativeLine(
+        "Bias correction",
+        `Auto-cal state is ${calState}. The correction is not yet trusted enough to be treated as valid.`
+      )
+    );
+  }
+
+  lines.push(
+    narrativeLine(
+      "Reference comparison",
+      `Piksi versus ZED PPS offset is ${fmt(ppsMean, 0)} ns with ${fmt(ppsRms, 2)} ns RMS, which indicates ${classifyPpsRms(ppsRms)} agreement between the references.`
+    )
+  );
+
+  lines.push(
+    narrativeLine(
+      "GNSS",
+      `Fix is ${fix}, sats used/visible are ${sats ?? "?"}/${vis ?? "?"}, and PDOP is ${fmt(pdop, 2)} which is ${classifyPdop(pdop)} geometry.`
+    )
+  );
+
+  if (holdDrift !== null && holdDrift !== undefined && isFinite(holdDrift)) {
+    lines.push(
+      narrativeLine(
+        "Holdover",
+        `Predicted 1-hour drift is ${fmt(holdDrift, 1)} ns.`
+      )
+    );
+  }
+
+  narrativeStatusEl.textContent = overall;
+  narrativeStatusEl.style.color = overallClass;
+  narrativePanelEl.style.borderColor = overallClass;
+  narrativeBodyEl.textContent = lines.join("\n");
+}
+
 async function refresh() {
   const [latest, history, allan, raw, hist, freq, hold, live] = await Promise.all([
     fetch("/api/latest").then(r => r.json()),
@@ -687,6 +821,7 @@ async function refresh() {
     makeCard("Holdover slope ns/s", hold.slope_ns_per_s?.toFixed ? hold.slope_ns_per_s.toFixed(3) : hold.slope_ns_per_s) +
     makeCard("Predicted drift 1h ns", hold.drift_1h_ns?.toFixed ? hold.drift_1h_ns.toFixed(1) : hold.drift_1h_ns);
 
+  setNarrative(latest, live, hold);
   rawEl.textContent = JSON.stringify(raw, null, 2);
 
   const histFiltered = filteredHistory(history);
