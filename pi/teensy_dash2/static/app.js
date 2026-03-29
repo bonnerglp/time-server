@@ -9,6 +9,7 @@ const ppsNoiseCanvas = document.getElementById("ppsNoiseChart");
 const freqCanvas = document.getElementById("freqChart");
 const trafficCanvas = document.getElementById("trafficChart");
 const gnssCanvas = document.getElementById("gnssChart");
+const ppsCompareCanvas = document.getElementById("ppsCompareChart");
 const histCanvas = document.getElementById("histChart");
 const allanCanvas = document.getElementById("allanChart");
 
@@ -359,11 +360,7 @@ async function refresh() {
     { name: "crc_err", values: history.map(x => x.crc_err) }
   ], history.map(x => x.timestamp_utc));
 
-  drawSeries(gnssCanvas, [
-    { name: "sats_used", values: history.map(x => x.sats) },
-    { name: "sats_visible", values: history.map(x => x.sats_visible) },
-    { name: "pdop", values: history.map(x => x.pdop) },
-    { name: "cn0_avg", values: history.map(x => x.cn0_avg) },
+  drawSeries(ppsCompareCanvas, [
     { name: "piksi_minus_zed_ns", values: history.map(x => x.piksi_minus_zed_ns) }
   ], history.map(x => x.timestamp_utc));
 

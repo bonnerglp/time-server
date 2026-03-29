@@ -58,7 +58,11 @@ def recent_history(limit=7200):
         SELECT timestamp_utc,
                err_ns, period_ns, rms_ns,
                tcp_bytes, sbp_frames, crc_err,
-               sats, pdop, cn0_avg,
+               sats, sats_visible,
+               pdop, hdop, vdop,
+               cn0_avg, cn0_max,
+               gps_count, gal_count, glo_count, bds_count, qzss_count,
+               piksi_minus_zed_ns, piksi_minus_zed_rms_ns,
                fe_phase_ns,
                gps_tow_ms, gps_ns_res,
                utc_ns
