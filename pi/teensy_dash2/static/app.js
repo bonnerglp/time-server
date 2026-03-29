@@ -238,6 +238,135 @@ function drawAllan(canvas, rows) {
   ctx.restore();
 }
 
+
+function drawGnssDual(canvas, history) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  const padL = 55, padR = 55, padT = 20, padB = 40;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "#1b1b1b";
+  ctx.fillRect(0, 0, w, h);
+  ctx.font = "12px sans-serif";
+
+  const labels = history.map(x => x.timestamp_utc);
+  const sats = history.map(x => x.sats);
+  const vis = history.map(x => x.sats_visible);
+  const pdop = history.map(x => x.pdop);
+
+  const satVals = [...sats, ...vis].filter(v => v !== null && isFinite(v));
+  const pdopVals = pdop.filter(v => v !== null && isFinite(v));
+
+  if (!satVals.length && !pdopVals.length) {
+    ctx.fillStyle = "#aaa";
+    ctx.fillText("No GNSS data", 20, 20);
+    return;
+  }
+
+  let satMin = satVals.length ? Math.min(...satVals) : 0;
+  let satMax = satVals.length ? Math.max(...satVals) : 1;
+  let pdopMin = pdopVals.length ? Math.min(...pdopVals) : 0;
+  let pdopMax = pdopVals.length ? Math.max(...pdopVals) : 1;
+
+  if (satMin === satMax) { satMin -= 1; satMax += 1; }
+  if (pdopMin === pdopMax) { pdopMin -= 0.1; pdopMax += 0.1; }
+
+  satMin = Math.floor(satMin - 1);
+  satMax = Math.ceil(satMax + 1);
+  pdopMin = Math.max(0, pdopMin - 0.1);
+  pdopMax = pdopMax + 0.1;
+
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  ctx.strokeStyle = "#555";
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, h - padB);
+  ctx.lineTo(w - padR, h - padB);
+  ctx.lineTo(w - padR, padT);
+  ctx.stroke();
+
+  ctx.fillStyle = "#aaa";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(String(satMax), 5, padT - 2);
+  ctx.textBaseline = "bottom";
+  ctx.fillText(String(satMin), 5, h - padB + 2);
+
+  ctx.textAlign = "right";
+  ctx.textBaseline = "top";
+  ctx.fillText(pdopMax.toFixed(2), w - 5, padT - 2);
+  ctx.textBaseline = "bottom";
+  ctx.fillText(pdopMin.toFixed(2), w - 5, h - padB + 2);
+
+  if (labels.length > 1) {
+    const tickCount = Math.min(6, labels.length);
+    ctx.strokeStyle = "#333";
+    ctx.fillStyle = "#aaa";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+
+    for (let t = 0; t < tickCount; t++) {
+      const idx = Math.round(t * (labels.length - 1) / Math.max(tickCount - 1, 1));
+      const x = padL + idx * plotW / Math.max(labels.length - 1, 1);
+      ctx.beginPath();
+      ctx.moveTo(x, h - padB);
+      ctx.lineTo(x, h - padB + 5);
+      ctx.stroke();
+
+      const label = fmtAxisTime(labels[idx]);
+      ctx.save();
+      ctx.translate(x, h - padB + 8);
+      ctx.rotate(-Math.PI / 6);
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  function xAt(i, n) {
+    return padL + i * plotW / Math.max(n - 1, 1);
+  }
+  function ySat(v) {
+    return padT + (satMax - v) * plotH / Math.max(satMax - satMin, 1e-9);
+  }
+  function yPdop(v) {
+    return padT + (pdopMax - v) * plotH / Math.max(pdopMax - pdopMin, 1e-9);
+  }
+
+  function drawLine(values, yfn, color, dashed=false) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    if (dashed) ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    let started = false;
+    values.forEach((v, i) => {
+      if (v === null || !isFinite(v)) return;
+      const x = xAt(i, values.length);
+      const y = yfn(v);
+      if (!started) {
+        ctx.moveTo(x, y);
+        started = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  drawLine(sats, ySat, "#4ea1ff");
+  drawLine(vis, ySat, "#6ee7a8");
+  drawLine(pdop, yPdop, "#ffb86b", true);
+
+  ctx.fillStyle = "#4ea1ff";
+  ctx.fillText("sats_used", padL + 10, 4);
+  ctx.fillStyle = "#6ee7a8";
+  ctx.fillText("sats_visible", padL + 120, 4);
+  ctx.fillStyle = "#ffb86b";
+  ctx.fillText("pdop", padL + 260, 4);
+}
+
 function filteredHistory(history) {
   return history.filter(x =>
     x.err_ns !== null &&
@@ -372,11 +501,7 @@ async function refresh() {
     { name: "piksi_minus_zed_ns", values: history.map(x => x.piksi_minus_zed_ns) }
   ], history.map(x => x.timestamp_utc));
 
-  drawSeries(gnssCanvas, [
-    { name: "sats_used", values: history.map(x => x.sats) },
-    { name: "sats_visible", values: history.map(x => x.sats_visible) },
-    { name: "pdop", values: history.map(x => x.pdop) }
-  ], history.map(x => x.timestamp_utc));
+  drawGnssDual(gnssCanvas, history);
 
   drawBars(histCanvas, hist.centers || [], hist.counts || [], "err_ns");
   drawAllan(allanCanvas, allan);
