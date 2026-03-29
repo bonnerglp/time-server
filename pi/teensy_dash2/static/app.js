@@ -439,6 +439,146 @@ function drawGnssDual(canvas, history) {
   ctx.fillText("pdop", padL + 260, 4);
 }
 
+function drawPpsCompare(canvas, history) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  const padL = 70, padR = 20, padT = 20, padB = 40;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "#1b1b1b";
+  ctx.fillRect(0, 0, w, h);
+  ctx.font = "12px sans-serif";
+
+  const labels = history.map(x => x.timestamp_utc);
+  const vals = history.map(x => {
+    const v = x.piksi_minus_zed_ns;
+    return (v !== null && isFinite(v)) ? Number(v) : null;
+  });
+
+  const valid = vals.filter(v => v !== null);
+  if (!valid.length) {
+    ctx.fillStyle = "#aaa";
+    ctx.fillText("No PPS comparison data", 20, 20);
+    return;
+  }
+
+  let ymin = Math.min(...valid);
+  let ymax = Math.max(...valid);
+  let span = ymax - ymin;
+
+  if (span < 1) span = 1;
+  const margin = Math.max(10, span * 0.15);
+  ymin -= margin;
+  ymax += margin;
+
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  function xAt(i, n) {
+    return padL + i * plotW / Math.max(n - 1, 1);
+  }
+  function yAt(v) {
+    return padT + (ymax - v) * plotH / Math.max(ymax - ymin, 1e-9);
+  }
+
+  const yTicks = [
+    ymin,
+    ymin + (ymax - ymin) * 0.25,
+    ymin + (ymax - ymin) * 0.50,
+    ymin + (ymax - ymin) * 0.75,
+    ymax
+  ];
+
+  yTicks.forEach(v => {
+    const y = yAt(v);
+
+    ctx.save();
+    ctx.strokeStyle = "#2f2f2f";
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(w - padR, y);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.strokeStyle = "#555";
+    ctx.beginPath();
+    ctx.moveTo(padL - 5, y);
+    ctx.lineTo(padL, y);
+    ctx.stroke();
+
+    ctx.fillStyle = "#aaa";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText(v.toFixed(0), padL - 8, y);
+  });
+
+  ctx.strokeStyle = "#555";
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, h - padB);
+  ctx.lineTo(w - padR, h - padB);
+  ctx.stroke();
+
+  if (labels.length > 1) {
+    const tickCount = Math.min(6, labels.length);
+    ctx.strokeStyle = "#333";
+    ctx.fillStyle = "#aaa";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+
+    for (let t = 0; t < tickCount; t++) {
+      const idx = Math.round(t * (labels.length - 1) / Math.max(tickCount - 1, 1));
+      const x = xAt(idx, labels.length);
+      ctx.beginPath();
+      ctx.moveTo(x, h - padB);
+      ctx.lineTo(x, h - padB + 5);
+      ctx.stroke();
+
+      const label = fmtAxisTime(labels[idx]);
+      ctx.save();
+      ctx.translate(x, h - padB + 8);
+      ctx.rotate(-Math.PI / 6);
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  ctx.strokeStyle = "#4ea1ff";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  let started = false;
+
+  vals.forEach((v, i) => {
+    if (v === null) {
+      started = false;
+      return;
+    }
+    const x = xAt(i, vals.length);
+    const y = yAt(v);
+    if (!started) {
+      ctx.moveTo(x, y);
+      started = true;
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+  ctx.stroke();
+
+  ctx.fillStyle = "#4ea1ff";
+  vals.forEach((v, i) => {
+    if (v === null) return;
+    const x = xAt(i, vals.length);
+    const y = yAt(v);
+    ctx.fillRect(x - 1, y - 1, 2, 2);
+  });
+
+  const mean = valid.reduce((a, b) => a + b, 0) / valid.length;
+  ctx.fillStyle = "#4ea1ff";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(`piksi_minus_zed_ns  mean ${mean.toFixed(1)}  min ${Math.min(...valid).toFixed(0)}  max ${Math.max(...valid).toFixed(0)}`, padL + 10, 4);
+}
+
 function filteredHistory(history) {
   return history.filter(x =>
     x.err_ns !== null &&
@@ -569,9 +709,7 @@ async function refresh() {
     { name: "crc_err", values: history.map(x => x.crc_err) }
   ], history.map(x => x.timestamp_utc));
 
-  drawSeries(ppsCompareCanvas, [
-    { name: "piksi_minus_zed_ns", values: history.map(x => x.piksi_minus_zed_ns) }
-  ], history.map(x => x.timestamp_utc));
+  drawPpsCompare(ppsCompareCanvas, history);
 
   drawGnssDual(gnssCanvas, history);
 
