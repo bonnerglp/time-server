@@ -260,10 +260,21 @@ function drawAllan(canvas, rows) {
   yTickExponents.forEach(e => {
     const val = Math.pow(10, e);
     const y = yAt(val);
+
+    ctx.save();
+    ctx.strokeStyle = "#2f2f2f";
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(w - padR, y);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.strokeStyle = "#555";
     ctx.beginPath();
     ctx.moveTo(padL - 5, y);
     ctx.lineTo(padL, y);
     ctx.stroke();
+
     ctx.fillText(`1e${e}`, padL - 8, y);
   });
 
