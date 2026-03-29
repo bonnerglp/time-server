@@ -372,6 +372,12 @@ async function refresh() {
     { name: "piksi_minus_zed_ns", values: history.map(x => x.piksi_minus_zed_ns) }
   ], history.map(x => x.timestamp_utc));
 
+  drawSeries(gnssCanvas, [
+    { name: "sats_used", values: history.map(x => x.sats) },
+    { name: "sats_visible", values: history.map(x => x.sats_visible) },
+    { name: "pdop", values: history.map(x => x.pdop) }
+  ], history.map(x => x.timestamp_utc));
+
   drawBars(histCanvas, hist.centers || [], hist.counts || [], "err_ns");
   drawAllan(allanCanvas, allan);
 }
