@@ -107,9 +107,30 @@ These are critical and should not be violated unless I explicitly ask:
     │   └── dump_state.sh
     └── system_config/
         └── STATE_SNAPSHOT.txt
+```
 
-### Chunk 2 of 3
-```text
+## Database
+
+- Main DB: `/home/pi/teensy_appliance/teensy_stats.db`
+
+### Main table/state of interest
+
+- `latest_state`
+- `samples`
+
+## Important services
+
+These services matter to current operation:
+
+- `chrony.service`
+- `zed-monitor.service`
+- `zed-to-teensy.service`
+- `teensy-collector.service`
+- `teensy-dash2.service`
+- `zed-splitter.service`
+- `gpsd-direct.service`
+- `ser2net.service`
+
 ## Database expectations
 
 Important fields expected in DB / API pipeline:
@@ -230,6 +251,7 @@ Important:
 
 - PDOP must be shown on its own meaningful scale
 - a dual-axis style is preferred so PDOP is not visually crushed by satellite counts
+
 ### Allan deviation chart behavior
 
 The Allan chart is dashboard-native and should remain sourced from `/api/allan`.
@@ -293,3 +315,24 @@ Refresh snapshot with:
 
 ```bash
 ~/time-server/rebuild/dump_state.sh > ~/time-server/system_config/STATE_SNAPSHOT.txt
+```
+
+Typical git workflow:
+
+```bash
+cd ~/time-server
+git add .
+git commit -m "Describe change"
+git push
+```
+
+## Important practical notes for future chats
+
+- If dashboard numbers look contradictory, check whether the view is showing **raw** phase or **calibrated** phase
+- Do not mistake raw phase offset for corrected timing error
+- If a plot looks wrong, verify whether the issue is:
+  - bad scaling
+  - stale browser JS cache
+  - invalid/sentinel values not filtered
+  - wrong API endpoint
+- Prefer improving backend sanitation when data contains bogus values, while keeping frontend defensive rendering too
