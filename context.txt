@@ -1,0 +1,1272 @@
+==================== CHAT CONTEXT EXPORT ====================
+Generated: Sun Mar 29 12:19:35 AM UTC 2026
+
+
+==================== STATE SNAPSHOT ====================
+================ TIME SERVER STATUS ================
+Generated: 2026-03-28T20:19:35-04:00
+
+[ SYSTEM ROLE ]
+Phase: Phase 1
+Time server host: Raspberry Pi
+Primary active timing source: ZED-F9T PPS into Raspberry Pi / chrony
+PPS fanout: ZED-F9T PPS -> Raspberry Pi and Teensy
+Ethernet/data fanout: ZED-F9T USB -> zed-splitter -> gpsd-direct and ser2net
+Teensy role: analytics / telemetry / measurement only
+Teensy timing role: not yet disciplining Raspberry Pi
+FE-5680A role: not yet integrated into active timing chain
+
+[ HARDWARE / SIGNAL CHAIN ]
+Primary host:
+  Raspberry Pi time server
+
+Current active timing chain:
+  ZED-F9T PPS -> Raspberry Pi PPS input -> chrony -> NTP service
+
+Current PPS distribution:
+  ZED-F9T PPS -> Raspberry Pi
+  ZED-F9T PPS -> Teensy
+
+Current Ethernet / data distribution:
+  ZED-F9T USB -> Raspberry Pi
+  zed-splitter -> gpsd-direct
+  zed-splitter -> ser2net
+  ser2net -> remote u-center monitoring
+
+Current analytics chain:
+  Teensy -> UDP telemetry collector -> logger -> dashboard
+
+Current active software components:
+  chrony
+  zed-splitter.service
+  gpsd-direct.service
+  ser2net.service
+  teensy-collector.service
+  teensy-dash2.service
+  teensy_logger.service
+
+Planned / known project hardware:
+  ZED-F9T in current active chain
+  Teensy 4.1 for analytics / measurement / future discipline work
+  Piksi retained as optional comparison / reference source
+  FE-5680A planned for later holdover / discipline phase
+
+Repository model:
+  Git stores source, config, services, rebuild scripts, and state snapshot
+  Git does NOT store live DB history, logs, plots, or virtualenvs
+
+[ NETWORK ]
+Hostname:
+raspberrypi
+IP address(es):
+10.0.0.125 2601:19e:4680:b410::fa2d 2601:19e:4680:b410:46cd:5377:5ef7:32d0 
+
+[ SERVICES ]
+OK    chrony.service running
+OK    zed-splitter.service running
+OK    gpsd-direct.service running
+OK    ser2net.service running
+OK    teensy-collector.service running
+OK    teensy-dash2.service running
+OK    teensy_logger.service running
+
+[ PORTS ]
+OK    Dashboard listening on 8082
+OK    NTP port 123 listening
+
+[ TIME SYNC ]
+WARN  PPS not currently selected by chrony
+Reference ID : 5DF387EF (unifi.versadns.com)
+Stratum      : 3
+System time  : 0.000384996 seconds slow of NTP time
+Last offset  : -0.000052730 seconds
+RMS offset   : 0.000511410 seconds
+Frequency    : 6.156 ppm fast
+Skew         : 0.124 ppm
+Leap status  : Normal
+
+[ PPS SOURCE DETAIL ]
+refclock SHM 0 refid NMEA offset 0.0 delay 0.2
+refclock PPS /dev/pps0 refid PPS precision 1e-7 poll 2 prefer lock NMEA
+
+[ GNSS / DATA INPUT DETAIL ]
+Configured operating note:
+  ZED-F9T PPS feeds Raspberry Pi and Teensy
+  ZED-F9T USB feeds Raspberry Pi
+  zed-splitter provides shared read access to gpsd-direct and ser2net
+  Direct USB is used for configuration writes; TCP is for monitoring only
+Available tty devices of interest:
+crw-rw---- 1 root dialout 166, 0 Mar 28 10:45 /dev/ttyACM0
+
+[ PPS DEVICES ]
+OK    PPS device(s): /dev/pps0 /dev/pps1
+
+[ TIMING QUALITY ]
+Latest logger line:
+2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
+
+[ DATABASE ]
+WARN  timing.db (104M, updated 1174s ago)
+  Path         : /home/pi/timing/timing.db
+  Last updated : 2026-03-28 20:00:01
+
+OK    teensy_stats.db (50M, updated 5s ago)
+  Path         : /home/pi/teensy_appliance/teensy_stats.db
+  Last updated : 2026-03-28 20:19:30
+
+[ WORKFLOW ]
+Refresh snapshot locally:
+  ~/time-server/rebuild/dump_state.sh > ~/time-server/system_config/STATE_SNAPSHOT.txt
+
+Commit and push with fresh snapshot:
+  ~/time-server/rebuild/commit_with_snapshot.sh "commit message"
+
+Full rebuild path:
+  ~/time-server/rebuild/rebuild_all.sh
+
+[ ZED MONITOR ]
+OK    zed-monitor.service running
+Latest ZED status:
+  ts=2026-03-29T00:19:26.077173+00:00 fix=3D used=23 visible=35 pdop=1.1 avg_cn0=27.2
+
+[ ZED TO TEENSY BRIDGE ]
+OK    zed-to-teensy.service running
+Latest bridge/comparison state:
+  sats=23 visible=35 fix=3D pdop=1.1 cn0=27.2
+  gps=11 gal=10 glo=6 bds=0 qzss=0
+  piksi_minus_zed_ns=406.0 rms_ns=36.58
+
+[ GIT ]
+1c60592 Refresh snapshot with current runtime values
+7623e86 Dashboard: add PPS comparison graph and migrate GNSS charts to DB-driven ZED telemetry
+0b712a8 Sync live dashboard and collector runtime changes back into repo
+a195c6a Phase 2: ZED telemetry bridge, PPS comparison logging, dashboard integration, and snapshot update
+0e55704 Phase 2: ZED telemetry bridge, collector schema update, and dashboard integration
+ M system_config/STATE_SNAPSHOT.txt
+?? context.txt
+?? rebuild/export_chat_context.sh
+
+====================================================
+OK    OVERALL: PASS
+====================================================
+
+==================== DASHBOARD BACKEND (app.py) ====================
+from pathlib import Path
+import sys
+import json
+
+REPO_ROOT = "/home/pi/time-server"
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+from pi.utils.version import get_version
+REPO_VERSION = get_version()
+
+# VERSION_HELPER_AVAILABLE
+import math
+import os
+import sqlite3
+from datetime import datetime, timezone
+from flask import Flask, jsonify, render_template
+
+DB_PATH = "/home/pi/teensy_appliance/teensy_stats.db"
+HTTP_PORT = int(os.environ.get("DASHBOARD_PORT", "8082"))
+
+app = Flask(__name__)
+
+@app.context_processor
+def inject_repo_version():
+    return {"repo_version": REPO_VERSION}
+
+
+def db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def now_utc():
+    return datetime.now(timezone.utc)
+
+def latest_packet():
+    conn = db()
+    row = conn.execute("SELECT * FROM latest_state WHERE singleton_id=1").fetchone()
+    conn.close()
+    if not row:
+        return {"online": False, "state": "OFFLINE"}
+    pkt = dict(row)
+    try:
+        ts = datetime.fromisoformat(pkt["timestamp_utc"])
+        age = (now_utc() - ts).total_seconds()
+    except Exception:
+        age = None
+    pkt["age_s"] = age
+    pkt["online"] = age is not None and age < 90
+    if not pkt["online"] and pkt.get("state") is None:
+        pkt["state"] = "OFFLINE"
+    return pkt
+
+def recent_history(limit=7200):
+    conn = db()
+    rows = conn.execute("""
+        SELECT timestamp_utc,
+               err_ns, period_ns, rms_ns,
+               tcp_bytes, sbp_frames, crc_err,
+               sats, sats_visible,
+               pdop, hdop, vdop,
+               cn0_avg, cn0_max,
+               gps_count, gal_count, glo_count, bds_count, qzss_count,
+               piksi_minus_zed_ns, piksi_minus_zed_rms_ns,
+               fe_phase_ns,
+               gps_tow_ms, gps_ns_res,
+               utc_ns
+        FROM samples
+        ORDER BY id DESC
+        LIMIT ?
+    """, (limit,)).fetchall()
+    conn.close()
+    return [dict(r) for r in reversed(rows)]
+
+def filtered_err_values(limit=40000, abs_limit_ns=100000):
+    rows = recent_history(limit)
+    vals = []
+    for r in rows:
+        v = r.get("err_ns")
+        if v is None:
+            continue
+        try:
+            x = float(v)
+        except Exception:
+            continue
+        if abs(x) > abs_limit_ns:
+            continue
+        vals.append(x)
+    return vals
+
+def rms_of(values):
+    if not values:
+        return None
+    mean = sum(values) / len(values)
+    var = sum((x - mean) ** 2 for x in values) / len(values)
+    return math.sqrt(var)
+
+def peak_to_peak(values):
+    if not values:
+        return None
+    return max(values) - min(values)
+
+def allan_from_err_ns(err_ns_values):
+    xs = []
+    for v in err_ns_values:
+        try:
+            xs.append(float(v) * 1e-9)
+        except Exception:
+            pass
+
+    n = len(xs)
+    if n < 8:
+        return []
+
+    out = []
+    m = 1
+    while 2 * m < n:
+        avgs = []
+        for i in range(0, n - m + 1, m):
+            chunk = xs[i:i + m]
+            if len(chunk) == m:
+                avgs.append(sum(chunk) / m)
+
+        if len(avgs) < 3:
+            break
+
+        s = 0.0
+        count = 0
+        for i in range(len(avgs) - 2):
+            d = avgs[i + 2] - 2 * avgs[i + 1] + avgs[i]
+            s += d * d
+            count += 1
+
+        if count > 0:
+            adev = math.sqrt(s / (2.0 * count)) / m
+            out.append({"tau_s": m, "adev": adev})
+
+        m *= 2
+
+    return out
+
+def histogram(values, bins=41):
+    vals = []
+    for v in values:
+        if v is None:
+            continue
+        try:
+            vals.append(float(v))
+        except Exception:
+            pass
+
+    if len(vals) < 2:
+        return {"centers": [], "counts": []}
+
+    vmin = min(vals)
+    vmax = max(vals)
+    if vmin == vmax:
+        vmin -= 1
+        vmax += 1
+
+    width = (vmax - vmin) / bins
+    counts = [0] * bins
+    centers = [vmin + (i + 0.5) * width for i in range(bins)]
+
+    for v in vals:
+        idx = int((v - vmin) / width)
+        if idx >= bins:
+            idx = bins - 1
+        if idx < 0:
+            idx = 0
+        counts[idx] += 1
+
+    return {"centers": centers, "counts": counts}
+
+def frequency_ppb(period_ns_values):
+    out = []
+    for v in period_ns_values:
+        if v is None:
+            out.append(None)
+            continue
+        try:
+            out.append((float(v) - 1_000_000_000.0) / 1_000_000_000.0 * 1e9)
+        except Exception:
+            out.append(None)
+    return out
+
+def holdover_estimate(err_ns_values, window=300):
+    vals = []
+    for v in err_ns_values[-window:]:
+        if v is None:
+            continue
+        try:
+            vals.append(float(v))
+        except Exception:
+            pass
+
+    n = len(vals)
+    if n < 10:
+        return {"slope_ns_per_s": None, "drift_1h_ns": None}
+
+    x_mean = (n - 1) / 2.0
+    y_mean = sum(vals) / n
+
+    num = 0.0
+    den = 0.0
+    for i, y in enumerate(vals):
+        dx = i - x_mean
+        dy = y - y_mean
+        num += dx * dy
+        den += dx * dx
+
+    slope = num / den if den else 0.0
+    return {
+        "slope_ns_per_s": slope,
+        "drift_1h_ns": slope * 3600.0
+    }
+
+def live_stats():
+    vals = filtered_err_values(40000, abs_limit_ns=100000)
+    current_phase = vals[-1] if vals else None
+
+    vals_60 = vals[-60:] if vals else []
+    vals_600 = vals[-600:] if vals else []
+
+    rms_60 = rms_of(vals_60)
+    rms_600 = rms_of(vals_600)
+    p2p_60 = peak_to_peak(vals_60)
+
+    adev_rows = allan_from_err_ns(vals[-5000:] if vals else [])
+    adev_1s = None
+    for row in adev_rows:
+        if row.get("tau_s") == 1:
+            adev_1s = row.get("adev")
+            break
+
+    return {
+        "current_phase_err_ns": current_phase,
+        "rms_60s_ns": rms_60,
+        "rms_10m_ns": rms_600,
+        "p2p_60s_ns": p2p_60,
+        "adev_1s": adev_1s,
+        "samples_60s": len(vals_60),
+        "samples_10m": len(vals_600),
+    }
+
+def get_zed_status():
+    path = "/home/pi/timing/zed_status.json"
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+@app.route("/")
+def index():
+    zed = get_zed_status()
+    return render_template("index.html", zed=zed)
+
+@app.route("/api/latest")
+def api_latest():
+    return jsonify(latest_packet())
+
+@app.route("/api/history")
+def api_history():
+    return jsonify(recent_history(7200))
+
+@app.route("/api/allan")
+def api_allan():
+    vals = filtered_err_values(20000, abs_limit_ns=100000)
+    return jsonify(allan_from_err_ns(vals))
+
+@app.route("/api/histogram")
+def api_histogram():
+    vals = filtered_err_values(5000, abs_limit_ns=100000)
+    return jsonify(histogram(vals, bins=51))
+
+@app.route("/api/frequency")
+def api_frequency():
+    rows = recent_history(5000)
+    vals = [r.get("period_ns") for r in rows]
+    return jsonify(frequency_ppb(vals))
+
+@app.route("/api/holdover")
+def api_holdover():
+    vals = filtered_err_values(2000, abs_limit_ns=100000)
+    return jsonify(holdover_estimate(vals, window=300))
+
+@app.route("/api/live_stats")
+def api_live_stats():
+    return jsonify(live_stats())
+
+@app.route("/api/raw/latest")
+def api_raw_latest():
+    pkt = latest_packet()
+    return jsonify({"packet": pkt, "raw": pkt})
+
+@app.route("/api/zed_status")
+def api_zed_status():
+    zed = get_zed_status()
+    if zed is None:
+        return jsonify({"ok": False, "error": "no zed status"})
+    zed["ok"] = True
+    return jsonify(zed)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=HTTP_PORT, debug=False)
+
+==================== DASHBOARD FRONTEND (app.js) ====================
+const cardsEl = document.getElementById("cards");
+const rawEl = document.getElementById("raw");
+
+const timingCanvas = document.getElementById("timingChart");
+const phaseTrendCanvas = document.getElementById("phaseTrendChart");
+const jitter60Canvas = document.getElementById("jitter60Chart");
+const jitter600Canvas = document.getElementById("jitter600Chart");
+const ppsNoiseCanvas = document.getElementById("ppsNoiseChart");
+const freqCanvas = document.getElementById("freqChart");
+const trafficCanvas = document.getElementById("trafficChart");
+const gnssCanvas = document.getElementById("gnssChart");
+const ppsCompareCanvas = document.getElementById("ppsCompareChart");
+const histCanvas = document.getElementById("histChart");
+const allanCanvas = document.getElementById("allanChart");
+
+function makeCard(label, value, cls = "") {
+  return `<div class="card"><div class="label">${label}</div><div class="value ${cls}">${value ?? ""}</div></div>`;
+}
+
+function fmt(value, digits = 2) {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "number" && isFinite(value)) return value.toFixed(digits);
+  return value;
+}
+
+function fmtSci(value, digits = 3) {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "number" && isFinite(value)) return value.toExponential(digits);
+  return value;
+}
+
+function fmtAxisTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return "";
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${mm}-${dd} ${hh}:${mi}`;
+}
+
+function demeanSeries(items, key) {
+  const vals = items.map(x => x[key]).filter(v => v !== null && isFinite(v));
+  if (!vals.length) return items.map(() => null);
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return items.map(x => {
+    const v = x[key];
+    return (v !== null && isFinite(v)) ? (v - mean) : null;
+  });
+}
+
+function drawSeries(canvas, seriesList, labels = null) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  const padL = 55, padR = 20, padT = 20, padB = 40;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "#1b1b1b";
+  ctx.fillRect(0, 0, w, h);
+  ctx.font = "12px sans-serif";
+
+  const vals = [];
+  for (const s of seriesList) {
+    for (const v of s.values) {
+      if (v !== null && isFinite(v)) vals.push(v);
+    }
+  }
+
+  if (!vals.length) {
+    ctx.fillStyle = "#aaa";
+    ctx.fillText("No data", 20, 20);
+    return;
+  }
+
+  let ymin = Math.min(...vals), ymax = Math.max(...vals);
+  if (ymin === ymax) {
+    ymin -= 1;
+    ymax += 1;
+  }
+
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  ctx.strokeStyle = "#555";
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, h - padB);
+  ctx.lineTo(w - padR, h - padB);
+  ctx.stroke();
+
+  ctx.fillStyle = "#aaa";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(ymax.toFixed(2), 5, padT - 2);
+  ctx.textBaseline = "bottom";
+  ctx.fillText(ymin.toFixed(2), 5, h - padB + 2);
+
+  if (labels && labels.length > 1) {
+    const tickCount = Math.min(6, labels.length);
+    ctx.strokeStyle = "#333";
+    ctx.fillStyle = "#aaa";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+
+    for (let t = 0; t < tickCount; t++) {
+      const idx = Math.round(t * (labels.length - 1) / Math.max(tickCount - 1, 1));
+      const x = padL + idx * plotW / Math.max(labels.length - 1, 1);
+
+      ctx.beginPath();
+      ctx.moveTo(x, h - padB);
+      ctx.lineTo(x, h - padB + 5);
+      ctx.stroke();
+
+      const label = fmtAxisTime(labels[idx]);
+      ctx.save();
+      ctx.translate(x, h - padB + 8);
+      ctx.rotate(-Math.PI / 6);
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  const colors = ["#4ea1ff", "#6ee7a8", "#ffb86b", "#ff7b7b", "#d19cff", "#72e3d2"];
+
+  seriesList.forEach((s, idx) => {
+    const c = colors[idx % colors.length];
+    ctx.strokeStyle = c;
+    ctx.beginPath();
+    let started = false;
+
+    s.values.forEach((v, i) => {
+      if (v === null || !isFinite(v)) return;
+      const x = padL + i * plotW / Math.max(s.values.length - 1, 1);
+      const y = padT + (ymax - v) * plotH / (ymax - ymin);
+      if (!started) {
+        ctx.moveTo(x, y);
+        started = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+
+    ctx.stroke();
+    ctx.fillStyle = c;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(s.name, padL + 10 + idx * 150, 4);
+  });
+}
+
+function drawBars(canvas, centers, counts, label) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  const pad = 45;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "#1b1b1b";
+  ctx.fillRect(0, 0, w, h);
+
+  if (!centers.length || !counts.length) {
+    ctx.fillStyle = "#aaa";
+    ctx.fillText("No data", 20, 20);
+    return;
+  }
+
+  const ymax = Math.max(...counts, 1);
+  const xmin = Math.min(...centers);
+  const xmax = Math.max(...centers);
+
+  ctx.strokeStyle = "#555";
+  ctx.beginPath();
+  ctx.moveTo(pad, 15);
+  ctx.lineTo(pad, h - pad);
+  ctx.lineTo(w - 15, h - pad);
+  ctx.stroke();
+
+  const bw = (w - pad - 20) / centers.length;
+  ctx.fillStyle = "#6ee7a8";
+
+  counts.forEach((c, i) => {
+    const bh = c * (h - pad - 25) / ymax;
+    const x = pad + i * bw;
+    const y = h - pad - bh;
+    ctx.fillRect(x, y, Math.max(bw - 1, 1), bh);
+  });
+
+  ctx.fillStyle = "#aaa";
+  ctx.fillText(`${label} min ${xmin.toFixed(1)}`, pad, h - 10);
+  ctx.fillText(`max ${xmax.toFixed(1)}`, w - 120, h - 10);
+}
+
+function drawAllan(canvas, rows) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  const pad = 55;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "#1b1b1b";
+  ctx.fillRect(0, 0, w, h);
+
+  if (!rows.length) {
+    ctx.fillStyle = "#aaa";
+    ctx.fillText("No Allan data yet", 20, 20);
+    return;
+  }
+
+  const xs = rows.map(r => Math.log10(r.tau_s));
+  const ys = rows.map(r => Math.log10(r.adev));
+  const xmin = Math.min(...xs), xmax = Math.max(...xs);
+  const ymin = Math.min(...ys), ymax = Math.max(...ys);
+
+  ctx.strokeStyle = "#555";
+  ctx.beginPath();
+  ctx.moveTo(pad, 20);
+  ctx.lineTo(pad, h - pad);
+  ctx.lineTo(w - 20, h - pad);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#6ee7a8";
+  ctx.beginPath();
+
+  rows.forEach((r, i) => {
+    const x = pad + (Math.log10(r.tau_s) - xmin) * (w - pad - 30) / Math.max(xmax - xmin, 1e-9);
+    const y = 20 + (ymax - Math.log10(r.adev)) * (h - pad - 30) / Math.max(ymax - ymin, 1e-9);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+
+  ctx.stroke();
+
+  ctx.fillStyle = "#aaa";
+  ctx.fillText("Tau (log s)", w / 2 - 30, h - 10);
+  ctx.save();
+  ctx.translate(15, h / 2 + 20);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText("ADEV (log)", 0, 0);
+  ctx.restore();
+}
+
+function filteredHistory(history) {
+  return history.filter(x =>
+    x.err_ns !== null &&
+    isFinite(x.err_ns) &&
+    Math.abs(x.err_ns) <= 100000
+  );
+}
+
+async function refresh() {
+  const [latest, history, allan, raw, hist, freq, hold, live] = await Promise.all([
+    fetch("/api/latest").then(r => r.json()),
+    fetch("/api/history").then(r => r.json()),
+    fetch("/api/allan").then(r => r.json()),
+    fetch("/api/raw/latest").then(r => r.json()),
+    fetch("/api/histogram").then(r => r.json()),
+    fetch("/api/frequency").then(r => r.json()),
+    fetch("/api/holdover").then(r => r.json()),
+    fetch("/api/live_stats").then(r => r.json()),
+  ]);
+
+  const statusClass = latest.online ? "ok" : "bad";
+
+  cardsEl.innerHTML =
+    makeCard("Online", latest.online ? "YES" : "NO", statusClass) +
+    makeCard("State", latest.state) +
+    makeCard("UTC", latest.utc) +
+    makeCard("UTC ns", latest.utc_ns) +
+    makeCard("UTC flags", latest.utc_flags) +
+
+    makeCard("PPS", latest.pps) +
+    makeCard("PPS OK", latest.pps_ok) +
+    makeCard("ZED OK", latest.zed_ok) +
+    makeCard("TCP OK", latest.tcp_ok) +
+    makeCard("UTC OK", latest.utc_ok) +
+    makeCard("GPS OK", latest.gps_ok) +
+    makeCard("Tracking", latest.tracking) +
+    makeCard("GPS week", latest.gps_week) +
+    makeCard("GPS TOW ms", latest.gps_tow_ms) +
+    makeCard("GPS ns residual", latest.gps_ns_res) +
+
+    makeCard("Current phase err ns", fmt(live.current_phase_err_ns, 0)) +
+    makeCard("60s RMS jitter ns", fmt(live.rms_60s_ns, 2)) +
+    makeCard("10m RMS jitter ns", fmt(live.rms_10m_ns, 2)) +
+    makeCard("60s peak-peak ns", fmt(live.p2p_60s_ns, 2)) +
+    makeCard("ADEV @ 1s", fmtSci(live.adev_1s, 3)) +
+    makeCard("Period ns", fmt(latest.period_ns, 0)) +
+    makeCard("Err ns", fmt(latest.err_ns, 0)) +
+    makeCard("RMS ns", fmt(latest.rms_ns, 2)) +
+    makeCard("Min err ns", fmt(latest.min_err_ns, 0)) +
+    makeCard("Max err ns", fmt(latest.max_err_ns, 0)) +
+
+    makeCard("Piksi-ZED ns", fmt(latest.piksi_minus_zed_ns, 0)) +
+    makeCard("Piksi-ZED RMS ns", fmt(latest.piksi_minus_zed_rms_ns, 2)) +
+    makeCard("Piksi-ZED min ns", fmt(latest.piksi_minus_zed_min_ns, 0)) +
+    makeCard("Piksi-ZED max ns", fmt(latest.piksi_minus_zed_max_ns, 0)) +
+    makeCard("Valid PPS samples", latest.piksi_minus_zed_valid) +
+    makeCard("Rejected PPS", latest.piksi_minus_zed_rejected) +
+
+    makeCard("Sats Used", latest.sats) +
+    makeCard("Sats Visible", latest.sats_visible) +
+    makeCard("Fix Type", latest.fix_type) +
+    makeCard("PDOP", fmt(latest.pdop, 2)) +
+    makeCard("HDOP", fmt(latest.hdop, 2)) +
+    makeCard("VDOP", fmt(latest.vdop, 2)) +
+    makeCard("C/N0 avg", fmt(latest.cn0_avg, 2)) +
+    makeCard("C/N0 max", fmt(latest.cn0_max, 2)) +
+    makeCard("GPS", latest.gps_count) +
+    makeCard("GAL", latest.gal_count) +
+    makeCard("GLO", latest.glo_count) +
+    makeCard("BDS", latest.bds_count) +
+    makeCard("QZSS", latest.qzss_count) +
+    makeCard("ZED status", latest.zed_status) +
+
+    makeCard("TCP bytes", latest.tcp_bytes) +
+    makeCard("SBP frames", latest.sbp_frames) +
+    makeCard("CRC err", latest.crc_err) +
+
+    makeCard("FE mode", latest.fe_mode) +
+    makeCard("FE control", latest.fe_control) +
+    makeCard("FE phase ns", latest.fe_phase_ns) +
+    makeCard("FE holdover", latest.fe_holdover) +
+    makeCard("Age s", latest.age_s?.toFixed ? latest.age_s.toFixed(1) : latest.age_s) +
+    makeCard("Holdover slope ns/s", hold.slope_ns_per_s?.toFixed ? hold.slope_ns_per_s.toFixed(3) : hold.slope_ns_per_s) +
+    makeCard("Predicted drift 1h ns", hold.drift_1h_ns?.toFixed ? hold.drift_1h_ns.toFixed(1) : hold.drift_1h_ns);
+
+  rawEl.textContent = JSON.stringify(raw, null, 2);
+
+  const histFiltered = filteredHistory(history);
+  const err60Hist = histFiltered.slice(-60);
+  const err600Hist = histFiltered.slice(-600);
+
+  drawSeries(timingCanvas, [
+    { name: "err_ns", values: history.map(x => x.err_ns) },
+    { name: "period_ns", values: history.map(x => x.period_ns) }
+  ], history.map(x => x.timestamp_utc));
+
+  drawSeries(phaseTrendCanvas, [
+    { name: "phase_err_ns", values: histFiltered.map(x => x.err_ns) }
+  ], histFiltered.map(x => x.timestamp_utc));
+
+  drawSeries(jitter60Canvas, [
+    { name: "60s_jitter_ns", values: demeanSeries(err60Hist, "err_ns") }
+  ], err60Hist.map(x => x.timestamp_utc));
+
+  drawSeries(jitter600Canvas, [
+    { name: "10m_jitter_ns", values: demeanSeries(err600Hist, "err_ns") }
+  ], err600Hist.map(x => x.timestamp_utc));
+
+  drawSeries(ppsNoiseCanvas, [
+    { name: "gps_pps_noise_ns", values: histFiltered.map(x => x.err_ns) }
+  ], histFiltered.map(x => x.timestamp_utc));
+
+  drawSeries(freqCanvas, [
+    { name: "freq_ppb", values: freq }
+  ]);
+
+  drawSeries(trafficCanvas, [
+    { name: "tcp_bytes", values: history.map(x => x.tcp_bytes) },
+    { name: "sbp_frames", values: history.map(x => x.sbp_frames) },
+    { name: "crc_err", values: history.map(x => x.crc_err) }
+  ], history.map(x => x.timestamp_utc));
+
+  drawSeries(ppsCompareCanvas, [
+    { name: "piksi_minus_zed_ns", values: history.map(x => x.piksi_minus_zed_ns) }
+  ], history.map(x => x.timestamp_utc));
+
+  drawBars(histCanvas, hist.centers || [], hist.counts || [], "err_ns");
+  drawAllan(allanCanvas, allan);
+}
+
+refresh();
+setInterval(refresh, 2000);
+
+==================== COLLECTOR (collector.py) ====================
+from pathlib import Path
+import sys
+
+REPO_ROOT = "/home/pi/time-server"
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
+from pi.utils.version import get_version
+REPO_VERSION = get_version()
+
+import os
+import socket
+import sqlite3
+import time
+from datetime import datetime, timezone
+
+DB_PATH = os.path.expanduser("~/teensy_appliance/teensy_stats.db")
+UDP_PORT = 5005
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS samples (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp_utc TEXT NOT NULL,
+    repo_version TEXT,
+
+    pps INTEGER,
+    state TEXT,
+    pps_ok INTEGER,
+    zed_ok INTEGER,
+    tcp_ok INTEGER,
+    utc_ok INTEGER,
+    gps_ok INTEGER,
+    tracking INTEGER,
+
+    period_ns REAL,
+    err_ns REAL,
+    rms_ns REAL,
+    min_err_ns REAL,
+    max_err_ns REAL,
+
+    tcp_bytes INTEGER,
+    sbp_frames INTEGER,
+    crc_err INTEGER,
+
+    gps_week INTEGER,
+    gps_tow_ms INTEGER,
+    gps_ns_res REAL,
+    utc TEXT,
+    utc_ns INTEGER,
+    utc_flags TEXT,
+
+    sats INTEGER,
+    sats_visible INTEGER,
+    pdop REAL,
+    hdop REAL,
+    vdop REAL,
+    cn0_avg REAL,
+    cn0_max REAL,
+    fix_type TEXT,
+
+    gps_count INTEGER,
+    gal_count INTEGER,
+    glo_count INTEGER,
+    bds_count INTEGER,
+    qzss_count INTEGER,
+    zed_status TEXT,
+
+    piksi_minus_zed_ns REAL,
+    piksi_minus_zed_rms_ns REAL,
+    piksi_minus_zed_valid INTEGER,
+    piksi_minus_zed_rejected INTEGER,
+    piksi_minus_zed_min_ns REAL,
+    piksi_minus_zed_max_ns REAL,
+
+    fe_mode TEXT,
+    fe_control REAL,
+    fe_phase_ns REAL,
+    fe_holdover INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_samples_timestamp ON samples(timestamp_utc);
+"""
+
+LATEST_SCHEMA = """
+CREATE TABLE IF NOT EXISTS latest_state (
+    singleton_id INTEGER PRIMARY KEY CHECK (singleton_id = 1),
+    timestamp_utc TEXT NOT NULL,
+    repo_version TEXT,
+
+    pps INTEGER,
+    state TEXT,
+    pps_ok INTEGER,
+    zed_ok INTEGER,
+    tcp_ok INTEGER,
+    utc_ok INTEGER,
+    gps_ok INTEGER,
+    tracking INTEGER,
+
+    period_ns REAL,
+    err_ns REAL,
+    rms_ns REAL,
+    min_err_ns REAL,
+    max_err_ns REAL,
+
+    tcp_bytes INTEGER,
+    sbp_frames INTEGER,
+    crc_err INTEGER,
+
+    gps_week INTEGER,
+    gps_tow_ms INTEGER,
+    gps_ns_res REAL,
+    utc TEXT,
+    utc_ns INTEGER,
+    utc_flags TEXT,
+
+    sats INTEGER,
+    sats_visible INTEGER,
+    pdop REAL,
+    hdop REAL,
+    vdop REAL,
+    cn0_avg REAL,
+    cn0_max REAL,
+    fix_type TEXT,
+
+    gps_count INTEGER,
+    gal_count INTEGER,
+    glo_count INTEGER,
+    bds_count INTEGER,
+    qzss_count INTEGER,
+    zed_status TEXT,
+
+    piksi_minus_zed_ns REAL,
+    piksi_minus_zed_rms_ns REAL,
+    piksi_minus_zed_valid INTEGER,
+    piksi_minus_zed_rejected INTEGER,
+    piksi_minus_zed_min_ns REAL,
+    piksi_minus_zed_max_ns REAL,
+
+    fe_mode TEXT,
+    fe_control REAL,
+    fe_phase_ns REAL,
+    fe_holdover INTEGER
+);
+"""
+
+FIELDS = [
+    "pps", "state", "pps_ok", "zed_ok", "tcp_ok", "utc_ok", "gps_ok", "tracking",
+    "period_ns", "err_ns", "rms_ns", "min_err_ns", "max_err_ns",
+    "tcp_bytes", "sbp_frames", "crc_err",
+    "gps_week", "gps_tow_ms", "gps_ns_res",
+    "utc", "utc_ns", "utc_flags",
+    "sats", "sats_visible", "pdop", "hdop", "vdop", "cn0_avg", "cn0_max", "fix_type",
+    "gps_count", "gal_count", "glo_count", "bds_count", "qzss_count", "zed_status",
+    "piksi_minus_zed_ns", "piksi_minus_zed_rms_ns", "piksi_minus_zed_valid",
+    "piksi_minus_zed_rejected", "piksi_minus_zed_min_ns", "piksi_minus_zed_max_ns",
+    "fe_mode", "fe_control", "fe_phase_ns", "fe_holdover",
+]
+
+MAX_ABS_ERR_NS = 100000          # 100 us
+MIN_PERIOD_NS = 900_000_000
+MAX_PERIOD_NS = 1_100_000_000
+
+MIGRATION_COLUMNS = {
+    "repo_version": "TEXT",
+    "zed_ok": "INTEGER",
+    "sats_visible": "INTEGER",
+    "hdop": "REAL",
+    "vdop": "REAL",
+    "cn0_max": "REAL",
+    "gps_count": "INTEGER",
+    "gal_count": "INTEGER",
+    "glo_count": "INTEGER",
+    "bds_count": "INTEGER",
+    "qzss_count": "INTEGER",
+    "zed_status": "TEXT",
+    "piksi_minus_zed_ns": "REAL",
+    "piksi_minus_zed_rms_ns": "REAL",
+    "piksi_minus_zed_valid": "INTEGER",
+    "piksi_minus_zed_rejected": "INTEGER",
+    "piksi_minus_zed_min_ns": "REAL",
+    "piksi_minus_zed_max_ns": "REAL",
+}
+
+def parse_value(v: str):
+    v = v.strip()
+    if v == "":
+        return None
+    if v.lower() in ("true", "false"):
+        return 1 if v.lower() == "true" else 0
+    try:
+        if "." in v or "e" in v.lower():
+            return float(v)
+        return int(v)
+    except ValueError:
+        return v
+
+def parse_packet(line: str):
+    out = {}
+    for item in line.strip().split(","):
+        if "=" not in item:
+            continue
+        k, v = item.split("=", 1)
+        out[k.strip()] = parse_value(v)
+    return out
+
+def sample_is_reasonable(sample: dict):
+    err_ns = sample.get("err_ns")
+    period_ns = sample.get("period_ns")
+    tracking = sample.get("tracking")
+    pps_ok = sample.get("pps_ok")
+    zed_ok = sample.get("zed_ok", 1)
+
+    try:
+        if err_ns is None or abs(float(err_ns)) > MAX_ABS_ERR_NS:
+            return False
+    except Exception:
+        return False
+
+    try:
+        if period_ns is None:
+            return False
+        p = float(period_ns)
+        if p < MIN_PERIOD_NS or p > MAX_PERIOD_NS:
+            return False
+    except Exception:
+        return False
+
+    if tracking in (0, False) or pps_ok in (0, False) or zed_ok in (0, False):
+        return False
+
+    return True
+
+def ensure_columns(conn: sqlite3.Connection, table: str, required: dict):
+    cur = conn.execute(f"PRAGMA table_info({table})")
+    existing = {row[1] for row in cur.fetchall()}
+    for col, coltype in required.items():
+        if col not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {coltype}")
+    conn.commit()
+
+def init_db(conn: sqlite3.Connection):
+    conn.executescript(SCHEMA)
+    conn.executescript(LATEST_SCHEMA)
+    ensure_columns(conn, "samples", MIGRATION_COLUMNS)
+    ensure_columns(conn, "latest_state", MIGRATION_COLUMNS)
+    conn.commit()
+
+def insert_sample(conn: sqlite3.Connection, sample: dict):
+    timestamp_utc = datetime.now(timezone.utc).isoformat()
+
+    row = {field: sample.get(field) for field in FIELDS}
+    row["repo_version"] = REPO_VERSION
+    row["timestamp_utc"] = timestamp_utc
+
+    cols = ["timestamp_utc"] + FIELDS + ["repo_version"]
+    placeholders = ", ".join("?" for _ in cols)
+    values = [row.get(c) for c in cols]
+
+    conn.execute(
+        f"INSERT INTO samples ({', '.join(cols)}) VALUES ({placeholders})",
+        values,
+    )
+
+    latest_cols = ["singleton_id", "timestamp_utc"] + FIELDS + ["repo_version"]
+    latest_vals = [1, timestamp_utc] + [row.get(c) for c in FIELDS] + [REPO_VERSION]
+    latest_placeholders = ", ".join("?" for _ in latest_cols)
+
+    conn.execute(
+        f"""
+        INSERT INTO latest_state ({', '.join(latest_cols)})
+        VALUES ({latest_placeholders})
+        ON CONFLICT(singleton_id) DO UPDATE SET
+        {', '.join(f"{c}=excluded.{c}" for c in ['timestamp_utc'] + FIELDS + ['repo_version'])}
+        """,
+        latest_vals,
+    )
+
+    conn.commit()
+
+def prune_old_rows(conn: sqlite3.Connection, keep_rows: int = 200000):
+    cur = conn.execute("SELECT COUNT(*) FROM samples")
+    count = cur.fetchone()[0]
+    if count > keep_rows:
+        delete_n = count - keep_rows
+        conn.execute(
+            f"DELETE FROM samples WHERE id IN (SELECT id FROM samples ORDER BY id ASC LIMIT {delete_n})"
+        )
+        conn.commit()
+
+def main():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    init_db(conn)
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(("0.0.0.0", UDP_PORT))
+
+    print(f"Collector listening on UDP {UDP_PORT}")
+    last_prune = time.time()
+
+    while True:
+        data, addr = sock.recvfrom(8192)
+        line = data.decode(errors="replace").strip()
+        try:
+            sample = parse_packet(line)
+
+            if sample_is_reasonable(sample):
+                insert_sample(conn, sample)
+
+            if time.time() - last_prune > 300:
+                prune_old_rows(conn)
+                last_prune = time.time()
+        except Exception as e:
+            print(f"Parse/store error from {addr}: {e}")
+            print(line)
+
+if __name__ == "__main__":
+    main()
+
+==================== ZED TO TEENSY (send_zed_to_teensy.py) ====================
+#!/usr/bin/env python3
+import json
+import socket
+import time
+from pathlib import Path
+
+TEENSY_IP = "10.0.0.116"
+TEENSY_PORT = 55557
+ZED_STATUS_PATH = Path("/home/pi/timing/zed_status.json")
+SEND_INTERVAL_S = 1.0
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+def load_zed_status():
+    with ZED_STATUS_PATH.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+def clean_value(v):
+    if v is None:
+        return ""
+    return str(v)
+
+def build_packet(z):
+    fields = {
+        "src": "zed",
+        "ts_utc": z.get("ts_utc", ""),
+        "gps_time_utc": z.get("gps_time_utc", ""),
+        "fix_type": z.get("fix_type", ""),
+        "sats_used": z.get("sats_used", 0),
+        "sats_visible": z.get("sats_visible", 0),
+        "pdop": z.get("pdop", 0.0),
+        "hdop": z.get("hdop", 0.0),
+        "vdop": z.get("vdop", 0.0),
+        "avg_cn0": z.get("avg_cn0", 0.0),
+        "max_cn0": z.get("max_cn0", 0.0),
+        "gps_count": z.get("gps_count", 0),
+        "gal_count": z.get("gal_count", 0),
+        "glo_count": z.get("glo_count", 0),
+        "bds_count": z.get("bds_count", 0),
+        "qzss_count": z.get("qzss_count", 0),
+        "status": z.get("status", ""),
+    }
+    return ",".join(f"{k}={clean_value(v)}" for k, v in fields.items())
+
+def main():
+    print(f"Sending ZED status to {TEENSY_IP}:{TEENSY_PORT}")
+    while True:
+        try:
+            z = load_zed_status()
+            payload = build_packet(z).encode("utf-8")
+            sock.sendto(payload, (TEENSY_IP, TEENSY_PORT))
+        except Exception as e:
+            print(f"send_zed_to_teensy error: {e}")
+        time.sleep(SEND_INTERVAL_S)
+
+if __name__ == "__main__":
+    main()
+
+==================== LATEST DB STATE (latest_state) ====================
+singleton_id=1
+timestamp_utc=2026-03-29T00:19:35.999494+00:00
+pps=None
+state=TRACKING
+pps_ok=1
+tcp_ok=None
+utc_ok=None
+gps_ok=None
+tracking=None
+period_ns=999997001.0
+err_ns=-2999.0
+rms_ns=None
+min_err_ns=None
+max_err_ns=None
+tcp_bytes=None
+sbp_frames=None
+crc_err=None
+gps_week=None
+gps_tow_ms=None
+gps_ns_res=None
+utc=ZED_UTC=2026-03-29T00:19:25.000Z
+utc_ns=None
+utc_flags=None
+sats=23
+pdop=1.1
+cn0_avg=27.2
+fix_type=3D
+fe_mode=None
+fe_control=None
+fe_phase_ns=None
+fe_holdover=None
+repo_version=189a5f0 [main]
+zed_ok=1
+sats_visible=35
+hdop=0.62
+vdop=0.91
+cn0_max=48.0
+gps_count=11
+gal_count=10
+glo_count=6
+bds_count=0
+qzss_count=0
+zed_status=OK
+piksi_minus_zed_ns=406.0
+piksi_minus_zed_rms_ns=36.58
+piksi_minus_zed_valid=12964
+piksi_minus_zed_rejected=183
+piksi_minus_zed_min_ns=196.0
+piksi_minus_zed_max_ns=535.0
+
+==================== SAMPLE LIVE TELEMETRY (last 5 lines) ====================
+Teensy monitor connected
+Watching live timing status...
+STATE=TRACKING ZED_OK=1 PPS_OK=1 SATS=24 VIS=35 PDOP=0.98 HDOP=0.57 VDOP=0.80 CN0=26.91 FIX=3D GPS=11 GAL=10 GLO=6 BDS=0 PPS_ERR_NS=-2999 PIKSI_MINUS_ZED_NS=406 PIKSI_MINUS_ZED_RMS_NS=36.58 PIKSI_MINUS_ZED_VALID=12965 PIKSI_MINUS_ZED_REJECTED=183 ZED_UTC=2026-03-29T00:19:35.000Z
+STATE=TRACKING ZED_OK=1 PPS_OK=1 SATS=24 VIS=35 PDOP=0.98 HDOP=0.57 VDOP=0.80 CN0=26.91 FIX=3D GPS=11 GAL=10 GLO=6 BDS=0 PPS_ERR_NS=-2992 PIKSI_MINUS_ZED_NS=400 PIKSI_MINUS_ZED_RMS_NS=36.58 PIKSI_MINUS_ZED_VALID=12966 PIKSI_MINUS_ZED_REJECTED=183 ZED_UTC=2026-03-29T00:19:35.000Z
+
+==================== END CHAT CONTEXT ====================
