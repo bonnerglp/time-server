@@ -193,11 +193,12 @@ function drawBars(canvas, centers, counts, label) {
 function drawAllan(canvas, rows) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width, h = canvas.height;
-  const pad = 55;
+  const padL = 70, padR = 25, padT = 20, padB = 55;
 
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = "#1b1b1b";
   ctx.fillRect(0, 0, w, h);
+  ctx.font = "12px sans-serif";
 
   if (!rows.length) {
     ctx.fillStyle = "#aaa";
@@ -205,36 +206,96 @@ function drawAllan(canvas, rows) {
     return;
   }
 
-  const xs = rows.map(r => Math.log10(r.tau_s));
-  const ys = rows.map(r => Math.log10(r.adev));
+  const clean = rows.filter(r => r && r.tau_s > 0 && r.adev > 0 && isFinite(r.tau_s) && isFinite(r.adev));
+  if (!clean.length) {
+    ctx.fillStyle = "#aaa";
+    ctx.fillText("No Allan data yet", 20, 20);
+    return;
+  }
+
+  const xs = clean.map(r => Math.log10(r.tau_s));
+  const ys = clean.map(r => Math.log10(r.adev));
   const xmin = Math.min(...xs), xmax = Math.max(...xs);
   const ymin = Math.min(...ys), ymax = Math.max(...ys);
 
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  const xAt = v => padL + (Math.log10(v) - xmin) * plotW / Math.max(xmax - xmin, 1e-9);
+  const yAt = v => padT + (ymax - Math.log10(v)) * plotH / Math.max(ymax - ymin, 1e-9);
+
   ctx.strokeStyle = "#555";
   ctx.beginPath();
-  ctx.moveTo(pad, 20);
-  ctx.lineTo(pad, h - pad);
-  ctx.lineTo(w - 20, h - pad);
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, h - padB);
+  ctx.lineTo(w - padR, h - padB);
   ctx.stroke();
+
+  const tauTicks = clean.map(r => r.tau_s);
+  ctx.strokeStyle = "#333";
+  ctx.fillStyle = "#aaa";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+
+  tauTicks.forEach(tau => {
+    const x = xAt(tau);
+    ctx.beginPath();
+    ctx.moveTo(x, h - padB);
+    ctx.lineTo(x, h - padB + 5);
+    ctx.stroke();
+    ctx.save();
+    ctx.translate(x, h - padB + 8);
+    ctx.rotate(-Math.PI / 6);
+    ctx.fillText(String(tau), 0, 0);
+    ctx.restore();
+  });
+
+  const yTickExponents = [];
+  for (let e = Math.floor(ymin); e <= Math.ceil(ymax); e++) {
+    yTickExponents.push(e);
+  }
+
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  yTickExponents.forEach(e => {
+    const val = Math.pow(10, e);
+    const y = yAt(val);
+    ctx.beginPath();
+    ctx.moveTo(padL - 5, y);
+    ctx.lineTo(padL, y);
+    ctx.stroke();
+    ctx.fillText(`1e${e}`, padL - 8, y);
+  });
 
   ctx.strokeStyle = "#6ee7a8";
   ctx.beginPath();
-
-  rows.forEach((r, i) => {
-    const x = pad + (Math.log10(r.tau_s) - xmin) * (w - pad - 30) / Math.max(xmax - xmin, 1e-9);
-    const y = 20 + (ymax - Math.log10(r.adev)) * (h - pad - 30) / Math.max(ymax - ymin, 1e-9);
+  clean.forEach((r, i) => {
+    const x = xAt(r.tau_s);
+    const y = yAt(r.adev);
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
-
   ctx.stroke();
 
+  clean.forEach(r => {
+    const x = xAt(r.tau_s);
+    const y = yAt(r.adev);
+    ctx.fillStyle = "#6ee7a8";
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+
   ctx.fillStyle = "#aaa";
-  ctx.fillText("Tau (log s)", w / 2 - 30, h - 10);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText("Tau (s)", w / 2, h - 18);
+
   ctx.save();
-  ctx.translate(15, h / 2 + 20);
+  ctx.translate(18, h / 2);
   ctx.rotate(-Math.PI / 2);
-  ctx.fillText("ADEV (log)", 0, 0);
+  ctx.textAlign = "center";
+  ctx.fillText("ADEV", 0, 0);
   ctx.restore();
 }
 
