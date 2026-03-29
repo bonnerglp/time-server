@@ -283,7 +283,6 @@ async function refresh() {
     makeCard("Raw phase err ns", fmt(live.current_phase_err_ns, 0)) +
     makeCard("Phase bias ns", fmt((live.phase_bias_ns ?? live.auto_cal_ns), 0), (live.phase_bias_valid || live.auto_cal_valid) ? "ok" : "bad") +
     makeCard("Bias RMS ns", fmt((live.phase_bias_rms_ns ?? live.auto_cal_rms_ns), 2)) +
-    makeCard("Residual ns", fmt(live.phase_residual_ns, 0)) +
 
     makeCard("Auto-cal state", live.auto_cal_state, autoCalClass) +
     makeCard("Learned cal ns", fmt(live.auto_cal_ns, 0), autoCalClass) +
