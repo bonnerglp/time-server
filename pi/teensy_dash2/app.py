@@ -227,6 +227,28 @@ def live_stats():
     rms_600 = rms_of(vals_600)
     p2p_60 = peak_to_peak(vals_60)
 
+    bias = None
+    bias_rms = None
+    residual = None
+    bias_valid = False
+
+    if len(vals_600) >= 120:
+        sorted_vals = sorted(vals_600)
+        mid = len(sorted_vals) // 2
+        if len(sorted_vals) % 2 == 0:
+            bias = (sorted_vals[mid - 1] + sorted_vals[mid]) / 2
+        else:
+            bias = sorted_vals[mid]
+
+        diffs = [(x - bias) for x in vals_600]
+        bias_rms = rms_of(diffs)
+
+        if current_phase is not None:
+            residual = current_phase - bias
+
+        if bias_rms is not None and bias_rms < 50:
+            bias_valid = True
+
     adev_rows = allan_from_err_ns(vals[-5000:] if vals else [])
     adev_1s = None
     for row in adev_rows:
@@ -242,6 +264,10 @@ def live_stats():
         "adev_1s": adev_1s,
         "samples_60s": len(vals_60),
         "samples_10m": len(vals_600),
+        "phase_bias_ns": bias,
+        "phase_bias_rms_ns": bias_rms,
+        "phase_residual_ns": residual,
+        "phase_bias_valid": bias_valid,
     }
 
 def get_zed_status():

@@ -279,6 +279,9 @@ async function refresh() {
     makeCard("GPS ns residual", latest.gps_ns_res) +
 
     makeCard("Current phase err ns", fmt(live.current_phase_err_ns, 0)) +
+    makeCard("Phase bias ns", fmt(live.phase_bias_ns, 0), live.phase_bias_valid ? "ok" : "bad") +
+    makeCard("Bias RMS ns", fmt(live.phase_bias_rms_ns, 2)) +
+    makeCard("Residual ns", fmt(live.phase_residual_ns, 0)) +
     makeCard("60s RMS jitter ns", fmt(live.rms_60s_ns, 2)) +
     makeCard("10m RMS jitter ns", fmt(live.rms_10m_ns, 2)) +
     makeCard("60s peak-peak ns", fmt(live.p2p_60s_ns, 2)) +
