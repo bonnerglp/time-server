@@ -27,6 +27,23 @@ Raspberry Pi time server project with Chrony, PPS, Teensy telemetry collection, 
 - Teensy logger service is active
 - Cron-based aggregation, plotting, pruning, backup, and email reporting are in place
 
+CURRENT STABLE BASELINE AFTER RECOVERY
+This is the current known-good operational state and should be treated as the rollback-safe baseline unless I explicitly choose to resume Chrony coarse-time engineering.
+
+Chrony / NTP state
+chrony is currently operating in a PPS-only configuration for stable production use
+chrony is selecting PPS as the reference source
+Raspberry Pi is back at stratum 1 when healthy
+chrony may briefly show unsynchronised or a network source immediately after restart, then reacquire PPS after a short settling period
+Current stable chrony intent is operational reliability, not coarse-time experimentation
+
+Important chrony note
+The original paired configuration using a coarse GNSS source plus PPS was broken because the coarse-time feed into chrony was not being populated in a usable way
+For now, the stable operational choice is PPS-only chrony
+Do not casually reintroduce lock NMEA / SHM / SOCK refclock edits unless specifically working on the coarse-time project
+
+Current PPS-only chrony is an operational baseline, not the final architecture; FE and TimeHAT code should be written as additive subsystems that preserve a smooth path to later integrated timing modes.
+
 ## Current operational note
 
 The current safe rollback baseline is:
