@@ -1,5 +1,5 @@
 ================ TIME SERVER STATUS ================
-Generated: 2026-03-31T20:03:35-04:00
+Generated: 2026-04-02T17:42:10-04:00
 
 [ SYSTEM ROLE ]
 Phase: Phase 1
@@ -73,11 +73,11 @@ OK    NTP port 123 listening
 OK    PPS selected by chrony
 Reference ID : 50505300 (PPS)
 Stratum      : 1
-System time  : 0.000000001 seconds slow of NTP time
-Last offset  : +0.000001173 seconds
-RMS offset   : 0.000000718 seconds
-Frequency    : 5.652 ppm fast
-Skew         : 0.275 ppm
+System time  : 0.000000118 seconds fast of NTP time
+Last offset  : +0.000000135 seconds
+RMS offset   : 0.000000076 seconds
+Frequency    : 5.155 ppm fast
+Skew         : 0.007 ppm
 Leap status  : Normal
 
 [ PPS SOURCE DETAIL ]
@@ -90,23 +90,23 @@ Configured operating note:
   zed-splitter provides shared read access to gpsd-direct and ser2net
   Direct USB is used for configuration writes; TCP is for monitoring only
 Available tty devices of interest:
-crw-rw---- 1 root dialout 166, 0 Mar 31 19:52 /dev/ttyACM0
+crw-rw---- 1 root dialout 166, 0 Apr  2 17:39 /dev/ttyACM0
 
 [ PPS DEVICES ]
-OK    PPS device(s): /dev/pps0 /dev/pps1 /dev/pps2
+OK    PPS device(s): /dev/pps0 /dev/pps1
 
 [ TIMING QUALITY ]
 Latest logger line:
 2026-03-20T11:30:40.226566+00:00  phase=-1405.0 ns  rms60=16.48880933643583  sats=15  pdop=1.6
 
 [ DATABASE ]
-WARN  timing.db (86M, updated 814s ago)
+WARN  timing.db (89M, updated 728s ago)
   Path         : /home/pi/timing/timing.db
-  Last updated : 2026-03-31 19:50:02
+  Last updated : 2026-04-02 17:30:02
 
-OK    teensy_stats.db (51M, updated 7s ago)
+OK    teensy_stats.db (51M, updated 17s ago)
   Path         : /home/pi/teensy_appliance/teensy_stats.db
-  Last updated : 2026-03-31 20:03:29
+  Last updated : 2026-04-02 17:41:53
 
 [ WORKFLOW ]
 Refresh snapshot locally:
@@ -121,21 +121,21 @@ Full rebuild path:
 [ ZED MONITOR ]
 OK    zed-monitor.service running
 Latest ZED status:
-  ts=2026-04-01T00:03:27.084140+00:00 fix=3D used=25 visible=31 pdop=0.86 avg_cn0=28.29
+  ts=2026-04-02T21:42:02.108011+00:00 fix=3D used=28 visible=38 pdop=1.03 avg_cn0=29.289
 
 [ ZED TO TEENSY BRIDGE ]
 OK    zed-to-teensy.service running
 Latest bridge/comparison state:
-  sats=25 visible=31 fix=3D pdop=0.86 cn0=28.29
-  gps=11 gal=9 glo=4 bds=0 qzss=0
-  piksi_minus_zed_ns=438.0 rms_ns=33.88
+  sats=28 visible=38 fix=3D pdop=1.03 cn0=29.29
+  gps=13 gal=13 glo=7 bds=0 qzss=0
+  piksi_minus_zed_ns=375.0 rms_ns=73.8
 
 [ GIT ]
+e9bbbf3 Clarify PPS-only baseline as operational not final architecture
+fcb3339 Add FE-5680A and TimeHAT integration specification documents
+8022954 Describe change
+abb4aa8 Update diagnostic context and refresh snapshot
 0723478 Update full diagnostic analysis context
-5a0e23b Restore PPS-only chrony and recover ZED dashboard feed
-2701066 Restore chrony to PPS-only stratum-1 operation
-c6f57bc Restore complete diagnostic handoff content
-cb07300 Restore complete diagnostic handoff content
  M system_config/STATE_SNAPSHOT.txt
 
 ====================================================
