@@ -72,10 +72,19 @@ CREATE TABLE IF NOT EXISTS samples (
     piksi_minus_zed_min_ns REAL,
     piksi_minus_zed_max_ns REAL,
 
-    fe_mode TEXT,
-    fe_control REAL,
-    fe_phase_ns REAL,
-    fe_holdover INTEGER
+    fe_hz INTEGER,
+    fe_mhz REAL,
+    fe_valid INTEGER,
+    fe_sanity_ok INTEGER,
+    fe_low_hz INTEGER,
+    fe_high_hz INTEGER,
+
+    fe_ppb REAL,
+    fe_delta_hz REAL,
+    fe_avg_hz REAL,
+    fe_min_hz REAL,
+    fe_max_hz REAL,
+    fe_stability_rms_hz REAL
 );
 
 CREATE INDEX IF NOT EXISTS idx_samples_timestamp ON samples(timestamp_utc);
@@ -136,10 +145,19 @@ CREATE TABLE IF NOT EXISTS latest_state (
     piksi_minus_zed_min_ns REAL,
     piksi_minus_zed_max_ns REAL,
 
-    fe_mode TEXT,
-    fe_control REAL,
-    fe_phase_ns REAL,
-    fe_holdover INTEGER
+    fe_hz INTEGER,
+    fe_mhz REAL,
+    fe_valid INTEGER,
+    fe_sanity_ok INTEGER,
+    fe_low_hz INTEGER,
+    fe_high_hz INTEGER,
+
+    fe_ppb REAL,
+    fe_delta_hz REAL,
+    fe_avg_hz REAL,
+    fe_min_hz REAL,
+    fe_max_hz REAL,
+    fe_stability_rms_hz REAL
 );
 """
 
@@ -153,10 +171,11 @@ FIELDS = [
     "gps_count", "gal_count", "glo_count", "bds_count", "qzss_count", "zed_status",
     "piksi_minus_zed_ns", "piksi_minus_zed_rms_ns", "piksi_minus_zed_valid",
     "piksi_minus_zed_rejected", "piksi_minus_zed_min_ns", "piksi_minus_zed_max_ns",
-    "fe_mode", "fe_control", "fe_phase_ns", "fe_holdover",
+    "fe_hz", "fe_mhz", "fe_valid", "fe_sanity_ok", "fe_low_hz", "fe_high_hz",
+    "fe_ppb", "fe_delta_hz", "fe_avg_hz", "fe_min_hz", "fe_max_hz", "fe_stability_rms_hz",
 ]
 
-MAX_ABS_ERR_NS = 100000          # 100 us
+MAX_ABS_ERR_NS = 100000
 MIN_PERIOD_NS = 900_000_000
 MAX_PERIOD_NS = 1_100_000_000
 
@@ -179,6 +198,18 @@ MIGRATION_COLUMNS = {
     "piksi_minus_zed_rejected": "INTEGER",
     "piksi_minus_zed_min_ns": "REAL",
     "piksi_minus_zed_max_ns": "REAL",
+    "fe_hz": "INTEGER",
+    "fe_mhz": "REAL",
+    "fe_valid": "INTEGER",
+    "fe_sanity_ok": "INTEGER",
+    "fe_low_hz": "INTEGER",
+    "fe_high_hz": "INTEGER",
+    "fe_ppb": "REAL",
+    "fe_delta_hz": "REAL",
+    "fe_avg_hz": "REAL",
+    "fe_min_hz": "REAL",
+    "fe_max_hz": "REAL",
+    "fe_stability_rms_hz": "REAL",
 }
 
 def parse_value(v: str):
@@ -207,8 +238,8 @@ def sample_is_reasonable(sample: dict):
     err_ns = sample.get("err_ns")
     period_ns = sample.get("period_ns")
     tracking = sample.get("tracking")
+    state = sample.get("state")
     pps_ok = sample.get("pps_ok")
-    zed_ok = sample.get("zed_ok", 1)
 
     try:
         if err_ns is None or abs(float(err_ns)) > MAX_ABS_ERR_NS:
@@ -225,8 +256,12 @@ def sample_is_reasonable(sample: dict):
     except Exception:
         return False
 
-    if tracking in (0, False) or pps_ok in (0, False) or zed_ok in (0, False):
+    if pps_ok in (0, False):
         return False
+
+    if tracking in (0, False, None):
+        if not (isinstance(state, str) and state == "TRACKING"):
+            return False
 
     return True
 
