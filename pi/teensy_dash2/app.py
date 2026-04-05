@@ -24,17 +24,21 @@ AUTO_CAL_MIN_SAMPLES = 120
 AUTO_CAL_TARGET_WINDOW = 600
 AUTO_CAL_MAX_RMS_NS = 50.0
 
+
 @app.context_processor
 def inject_repo_version():
     return {"repo_version": REPO_VERSION}
+
 
 def db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def now_utc():
     return datetime.now(timezone.utc)
+
 
 def latest_packet():
     conn = db()
@@ -42,17 +46,20 @@ def latest_packet():
     conn.close()
     if not row:
         return {"online": False, "state": "OFFLINE"}
+
     pkt = dict(row)
     try:
         ts = datetime.fromisoformat(pkt["timestamp_utc"])
         age = (now_utc() - ts).total_seconds()
     except Exception:
         age = None
+
     pkt["age_s"] = age
     pkt["online"] = age is not None and age < 90
     if not pkt["online"] and pkt.get("state") is None:
         pkt["state"] = "OFFLINE"
     return pkt
+
 
 def recent_history(limit=7200):
     conn = db()
@@ -65,7 +72,9 @@ def recent_history(limit=7200):
                cn0_avg, cn0_max,
                gps_count, gal_count, glo_count, bds_count, qzss_count,
                piksi_minus_zed_ns, piksi_minus_zed_rms_ns,
-               fe_phase_ns,
+               fe_hz, fe_mhz, fe_valid, fe_sanity_ok,
+               fe_low_hz, fe_high_hz,
+               fe_ppb, fe_delta_hz, fe_avg_hz, fe_min_hz, fe_max_hz, fe_stability_rms_hz,
                gps_tow_ms, gps_ns_res,
                utc_ns
         FROM samples
@@ -91,6 +100,7 @@ def sanitize_piksi_minus_zed_ns(v, abs_limit_ns=10000):
 
     return x
 
+
 def sanitize_history_rows(rows):
     out = []
     for r in rows:
@@ -98,6 +108,7 @@ def sanitize_history_rows(rows):
         d["piksi_minus_zed_ns"] = sanitize_piksi_minus_zed_ns(d.get("piksi_minus_zed_ns"))
         out.append(d)
     return out
+
 
 def filtered_err_values(limit=40000, abs_limit_ns=100000):
     rows = recent_history(limit)
@@ -115,6 +126,7 @@ def filtered_err_values(limit=40000, abs_limit_ns=100000):
         vals.append(x)
     return vals
 
+
 def rms_of(values):
     if not values:
         return None
@@ -122,10 +134,12 @@ def rms_of(values):
     var = sum((x - mean) ** 2 for x in values) / len(values)
     return math.sqrt(var)
 
+
 def peak_to_peak(values):
     if not values:
         return None
     return max(values) - min(values)
+
 
 def median_of(values):
     if not values:
@@ -136,6 +150,7 @@ def median_of(values):
     if n % 2 == 0:
         return (xs[mid - 1] + xs[mid]) / 2.0
     return xs[mid]
+
 
 def auto_calibration_from_values(values):
     sample_count = len(values)
@@ -185,6 +200,7 @@ def auto_calibration_from_values(values):
         "valid": valid,
     }
 
+
 def allan_from_err_ns(err_ns_values):
     xs = []
     for v in err_ns_values:
@@ -224,6 +240,7 @@ def allan_from_err_ns(err_ns_values):
 
     return out
 
+
 def histogram(values, bins=41):
     vals = []
     for v in values:
@@ -257,6 +274,7 @@ def histogram(values, bins=41):
 
     return {"centers": centers, "counts": counts}
 
+
 def frequency_ppb(period_ns_values):
     out = []
     for v in period_ns_values:
@@ -268,6 +286,7 @@ def frequency_ppb(period_ns_values):
         except Exception:
             out.append(None)
     return out
+
 
 def holdover_estimate(err_ns_values, window=300):
     vals = []
@@ -299,6 +318,7 @@ def holdover_estimate(err_ns_values, window=300):
         "slope_ns_per_s": slope,
         "drift_1h_ns": slope * 3600.0
     }
+
 
 def live_stats():
     vals = filtered_err_values(40000, abs_limit_ns=100000)
@@ -357,6 +377,7 @@ def live_stats():
         "auto_cal_valid": auto_cal["valid"],
     }
 
+
 def get_zed_status():
     path = "/home/pi/timing/zed_status.json"
     try:
@@ -365,28 +386,34 @@ def get_zed_status():
     except Exception:
         return None
 
+
 @app.route("/")
 def index():
     zed = get_zed_status()
     return render_template("index.html", zed=zed)
 
+
 @app.route("/api/latest")
 def api_latest():
     return jsonify(latest_packet())
 
+
 @app.route("/api/history")
 def api_history():
     return jsonify(recent_history(7200))
+
 
 @app.route("/api/allan")
 def api_allan():
     vals = filtered_err_values(20000, abs_limit_ns=100000)
     return jsonify(allan_from_err_ns(vals))
 
+
 @app.route("/api/histogram")
 def api_histogram():
     vals = filtered_err_values(5000, abs_limit_ns=100000)
     return jsonify(histogram(vals, bins=51))
+
 
 @app.route("/api/frequency")
 def api_frequency():
@@ -394,19 +421,23 @@ def api_frequency():
     vals = [r.get("period_ns") for r in rows]
     return jsonify(frequency_ppb(vals))
 
+
 @app.route("/api/holdover")
 def api_holdover():
     vals = filtered_err_values(2000, abs_limit_ns=100000)
     return jsonify(holdover_estimate(vals, window=300))
 
+
 @app.route("/api/live_stats")
 def api_live_stats():
     return jsonify(live_stats())
+
 
 @app.route("/api/raw/latest")
 def api_raw_latest():
     pkt = latest_packet()
     return jsonify({"packet": pkt, "raw": pkt})
+
 
 @app.route("/api/zed_status")
 def api_zed_status():
@@ -415,6 +446,7 @@ def api_zed_status():
         return jsonify({"ok": False, "error": "no zed status"})
     zed["ok"] = True
     return jsonify(zed)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=HTTP_PORT, debug=False)
