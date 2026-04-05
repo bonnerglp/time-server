@@ -764,11 +764,23 @@ async function refresh() {
     makeCard("10m RMS jitter ns", fmt(live.rms_10m_ns, 2)) +
     makeCard("Raw phase err ns", fmt(live.current_phase_err_ns, 0)) +
     makeCard("Phase bias ns", fmt((live.phase_bias_ns ?? live.auto_cal_ns), 0), (live.phase_bias_valid || live.auto_cal_valid) ? "ok" : "bad") +
+  
     makeCard("Auto-cal state", live.auto_cal_state, autoCalClass) +
     makeCard("Piksi-ZED RMS ns", fmt(latest.piksi_minus_zed_rms_ns, 2)) +
     makeCard("Bias RMS ns", fmt((live.phase_bias_rms_ns ?? live.auto_cal_rms_ns), 2)) +
     makeCard("Auto-cal samples", live.auto_cal_samples) +
+
+    makeCard("FE MHz", fmt(latest.fe_mhz, 6), Number(latest.fe_valid) === 1 ? "ok" : "bad") +
+    makeCard("FE sanity", Number(latest.fe_sanity_ok) === 1 ? "OK" : "BAD", Number(latest.fe_sanity_ok) === 1 ? "ok" : "bad") +
+    makeCard("FE ppb", fmt(latest.fe_ppb, 1)) +
+    makeCard("FE delta Hz", fmt(latest.fe_delta_hz, 0)) +
+    makeCard("FE avg Hz", fmt(latest.fe_avg_hz, 3)) +
+    makeCard("FE min Hz", fmt(latest.fe_min_hz, 0)) +
+    makeCard("FE max Hz", fmt(latest.fe_max_hz, 0)) +
+    makeCard("FE RMS Hz", fmt(latest.fe_stability_rms_hz, 3)) +
+
     makeCard("ZED OK", latest.zed_ok) +
+
     makeCard("TCP OK", latest.tcp_ok) +
     makeCard("UTC OK", latest.utc_ok) +
     makeCard("GPS OK", latest.gps_ok) +
